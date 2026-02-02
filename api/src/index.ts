@@ -5,7 +5,7 @@ const port = 3000
 
 const users = ["John Smith", "Rebecca Wafer", "Phil Hartman"];
 
-app.use(express.static('../web/dist'))
+// app.use(express.static('../web/dist'))
 
 app.get('/', (_req, res) => {
   res.send('Hello Express!')
