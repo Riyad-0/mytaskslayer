@@ -19,8 +19,8 @@ app.get('/api/posts/:postId/comments/:commentId', (_req, res) => {
   res.json({ postId: _req.params.postId, commentId: _req.params.commentId })
 })
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`)
+// })
 
 export default app
