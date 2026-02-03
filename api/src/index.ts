@@ -24,9 +24,9 @@ app.get('/api/posts/:postId/comments/:commentId', (_req, res) => {
   res.json({ postId: _req.params.postId, commentId: _req.params.commentId })
 })
 
-app.get('*splat', (_req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'))
-})
+// app.get('*splat', (_req, res) => {
+//   res.sendFile(path.join(__dirname, '../public/index.html'))
+// })
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
