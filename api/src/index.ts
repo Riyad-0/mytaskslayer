@@ -10,7 +10,7 @@ const port = 3000
 
 const users = ["John Smith", "Rebecca Wafer", "Phil Hartman"];
 
-// app.use(express.static(path.join(__dirname, '../public')))
+app.use(express.static(path.join(__dirname, '../public')))
 
 app.get('/', (_req, res) => {
   res.send('Hello Express!')
