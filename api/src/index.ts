@@ -12,10 +12,6 @@ const users = ["John Smith", "Rebecca Wafer", "Phil Hartman"];
 
 app.use(express.static(path.join(__dirname, '../public')))
 
-app.get('*splat', (_req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'))
-})
-
 app.get('/', (_req, res) => {
   res.send('Hello Express!')
 })
@@ -26,6 +22,10 @@ app.get('/api/users/:id', (_req, res) => {
 
 app.get('/api/posts/:postId/comments/:commentId', (_req, res) => {
   res.json({ postId: _req.params.postId, commentId: _req.params.commentId })
+})
+
+app.get('*splat', (_req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'))
 })
 
 app.listen(port, () => {
