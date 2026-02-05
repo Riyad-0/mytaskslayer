@@ -29,9 +29,9 @@ app.get('/api/posts/:postId/comments/:commentId', (_req, res) => {
 // client-side routing.
 // Only needed in dev build when serving static files from express instead of
 // running the frontend dev server.
-// app.get('*splat', (_req, res) => {
-//   res.sendFile(path.join(__dirname, '../public/index.html'))
-// })
+app.get('*splat', (_req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'))
+})
 
 // // Only needed in dev build.
 // app.listen(port, () => {
