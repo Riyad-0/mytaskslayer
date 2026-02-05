@@ -5,7 +5,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
+    // Allow vite to clear the output dir contents even when it is outside the
+    // project root folder. This allows the static files to be placed into the
+    // api folder and deleted on rebuild.
     emptyOutDir: true,
+    
     outDir: '../api/public'
   },
   server: {
