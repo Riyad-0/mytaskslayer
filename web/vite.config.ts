@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  // base: './',
   build: {
     // Allow vite to clear the output dir contents even when it is outside the
     // project root folder. This allows the static files to be placed into the
