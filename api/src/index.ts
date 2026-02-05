@@ -30,8 +30,7 @@ app.get('/api/posts/:postId/comments/:commentId', (_req, res) => {
 // Only needed in dev build when serving static files from express instead of
 // running the frontend dev server.
 app.get('*splat', (_req, res) => {
-  res.send("TESTING")
-  // res.sendFile(path.join(__dirname, '../public/index.html'))
+  res.sendFile(path.join(__dirname, '../public/index.html'))
 })
 
 // // Only needed in dev build.
