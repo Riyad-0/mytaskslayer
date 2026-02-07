@@ -1,7 +1,7 @@
 import {
   BrowserRouter as Router,
   Routes, Route, Link
-} from 'react-router-dom'
+} from 'react-router-dom';
 import Profile from "./Profile";
 import User from "./User";
 import Login from './Login';

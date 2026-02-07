@@ -14,7 +14,7 @@ function User() {
       .then(json => {
         setUser(json);
       });
-  }, [user]);
+  }, []);
   return (
     user == null ?
       <>Loading...</> :
