@@ -23,4 +23,4 @@ app.get('/api/posts/:postId/comments/:commentId', (_req, res) => {
   res.json({ postId: _req.params.postId, commentId: _req.params.commentId });
 });
 
-app.listen(port, () => console.log(`listening: http://localhost:${port}`));
+app.listen(port, () => console.log(`api: http://localhost:${port}`));
