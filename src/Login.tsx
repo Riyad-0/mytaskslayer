@@ -3,7 +3,7 @@ import { useState, type SetStateAction } from "react";
 type Change = React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>;
 type Submit = React.SubmitEventHandler<HTMLFormElement>;
 
-function Login() {
+function Login({ onLogIn }: { onLogIn: () => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -28,7 +28,9 @@ function Login() {
       }
     });
     const body = await res.json();
-    console.log("response: ", body);
+    if (body.result === "success") {
+      onLogIn();
+    }
   }
 
   return (

@@ -1,8 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 type Class = "Warrior" | "Scholar";
 
 function Profile() {
+  useEffect(() => {
+
+  }, []);
   const [playerClass, setPlayerClass] = useState<Class>("Scholar");
   return (
     <>
