@@ -4,7 +4,7 @@ type Class = "Warrior" | "Scholar";
 
 function Profile() {
   useEffect(() => {
-
+    // fetch()
   }, []);
   const [playerClass, setPlayerClass] = useState<Class>("Scholar");
   return (

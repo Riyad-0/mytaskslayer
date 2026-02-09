@@ -2,6 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { profile } from 'console';
 
 const port = 3000;
 
@@ -17,20 +18,67 @@ const users = ["John Smith", "Rebecca Wafer", "Phil Hartman"];
 
 interface Account {
   username: string,
-  password: string
+  password: string,
+  class_?: Class
 }
 const accounts: Account[] = [{
   username: "Bob",
-  password: "123"
+  password: "123",
 }];
+
+type Class = "Warrior" | "Scholar";
+
+interface Profile {
+  username: string,
+  class_?: Class
+}
+
+function getProfile(account: Account): Profile {
+  return {
+    username: account.username,
+    class_: account.class_
+  }
+}
 
 app.get('/', (req, res) => {
   res.send('Hello Express!');
 });
 
-app.get('/api/account', (req, res) => {
+app.get('/api/profile', (req, res) => {
   if (req.cookies.account !== undefined) {
-    res.json({ result: "success", username: req.cookies.account });
+    const username = req.cookies.account.username;
+    const foundAccount = accounts.find(account => account.username === username);
+    if (foundAccount) {
+      res.json({
+        result: "success",
+        profile: getProfile(foundAccount)
+      });
+    } else {
+      res.json({ result: "user not found" });
+    }
+  } else {
+    res.json({ result: "not logged in"});
+  }
+});
+
+app.post('/api/profile', (req, res) => {
+  if (req.cookies.account !== undefined) {
+    const username = req.cookies.account.username;
+    const foundAccount = accounts.find(account => account.username === username);
+    if (foundAccount) {
+      if (req.body.class_ !== undefined) {
+        if (req.body.class_ === "Warrior" || req.body.class_ === "Scholar") {
+          foundAccount.class_ = req.body.class_;
+          res.json({ result: "success", profile: getProfile(foundAccount) });
+        } else {
+          res.json({ result: "invalid class" })
+        }
+      } else {
+        res.json({ result: "success", getProfile(foundAccount) });
+      }
+    } else {
+      res.json({ result: "user not found" });
+    }
   } else {
     res.json({ result: "not logged in"});
   }
