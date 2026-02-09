@@ -19,18 +19,19 @@ const users = ["John Smith", "Rebecca Wafer", "Phil Hartman"];
 interface Account {
   username: string,
   password: string,
-  class_?: Class
+  class_: Class
 }
 const accounts: Account[] = [{
   username: "Bob",
   password: "123",
+  class_: "Scholar"
 }];
 
 type Class = "Warrior" | "Scholar";
 
 interface Profile {
   username: string,
-  class_?: Class
+  class_: Class
 }
 
 function getProfile(account: Account): Profile {
@@ -65,7 +66,7 @@ app.post('/api/profile', (req, res) => {
   if (req.cookies.account !== undefined) {
     const username = req.cookies.account.username;
     const foundAccount = accounts.find(account => account.username === username);
-    if (foundAccount) {
+    if (foundAccount !== undefined) {
       if (req.body.class_ !== undefined) {
         if (req.body.class_ === "Warrior" || req.body.class_ === "Scholar") {
           foundAccount.class_ = req.body.class_;
@@ -74,7 +75,7 @@ app.post('/api/profile', (req, res) => {
           res.json({ result: "invalid class" })
         }
       } else {
-        res.json({ result: "success", getProfile(foundAccount) });
+        res.json({ result: "success", profile: getProfile(foundAccount) });
       }
     } else {
       res.json({ result: "user not found" });
