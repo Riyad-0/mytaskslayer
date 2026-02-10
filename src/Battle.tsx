@@ -2,8 +2,13 @@ import { useEffect, useState } from "react";
 
 interface Monster {
   name: string,
-  task: string
+  task: string,
+  level: Level,
+  currentHp: number,
+  maxHp: number
 }
+
+type Level = number | "boss";
 
 function Battle() {
   const [monsters, setMonsters] = useState<Monster[]>();
@@ -22,13 +27,31 @@ function Battle() {
           "No monsters yet." :
           monsters.map(monster =>
             <div key={monster.name}>
-              <h4>{monster.name}</h4>
-              <h5>{monster.task}</h5>
+              <div>{formatLevel(monster.level)}</div>
+              <div>{monster.name}</div>
+              <div>{monster.task}</div>
+              <div>HP</div>
+              <div>{monster.currentHp}/{monster.maxHp}</div>
+              <button>Attack</button>
             </div>
           )
       }
     </>
   );
+}
+
+function formatLevel(level: Level) {
+  if (level === "boss") {
+    return "boss";
+  } else {
+    return "lvl " + padLevelNumber(level);
+  }
+}
+
+function padLevelNumber(level: number): string {
+  return (level < 10) ?
+    "0" + level :
+    level.toString();
 }
 
 export default Battle;

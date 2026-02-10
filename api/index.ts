@@ -31,24 +31,28 @@ const accounts: Account[] = [{
   monsters: [
     {
       name: "Dust Golem",
-      task: "fold the mountain"
+      task: "fold the mountain",
+      level: 8,
+      currentHp: 5,
+      maxHp: 10,
     },
     {
       name: "Caffeine Wraith",
-      task: "no coffee after 2pm"
+      task: "no coffee after 2pm",
+      level: "boss",
+      currentHp: 1,
+      maxHp: 1
     }
   ]
 }];
 
 type Class = "Warrior" | "Scholar";
-type Rank =
-  | { kind: "normal", level: number }
-  | { kind: "boss" };
+type Level = number | "boss";
 
 interface Monster {
   name: string,
   task: string,
-  rank: Rank,
+  level: Level,
   currentHp: number,
   maxHp: number
 }
@@ -64,7 +68,7 @@ function getProfile(account: Account): Profile {
     username: account.username,
     class_: account.class_,
     monsters: account.monsters
-  }
+  };
 }
 
 app.get('/', (req, res) => {
