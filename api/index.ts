@@ -19,25 +19,51 @@ const users = ["John Smith", "Rebecca Wafer", "Phil Hartman"];
 interface Account {
   username: string,
   password: string,
-  class_: Class
+  cookie: string,
+  class_: Class,
+  monsters: Monster[]
 }
 const accounts: Account[] = [{
   username: "Bob",
   password: "123",
-  class_: "Scholar"
+  cookie: "Bob",
+  class_: "Scholar",
+  monsters: [
+    {
+      name: "Dust Golem",
+      task: "fold the mountain"
+    },
+    {
+      name: "Caffeine Wraith",
+      task: "no coffee after 2pm"
+    }
+  ]
 }];
 
 type Class = "Warrior" | "Scholar";
+type Rank =
+  | { kind: "normal", level: number }
+  | { kind: "boss" };
+
+interface Monster {
+  name: string,
+  task: string,
+  rank: Rank,
+  currentHp: number,
+  maxHp: number
+}
 
 interface Profile {
   username: string,
-  class_: Class
+  class_: Class,
+  monsters: Monster[]
 }
 
 function getProfile(account: Account): Profile {
   return {
     username: account.username,
-    class_: account.class_
+    class_: account.class_,
+    monsters: account.monsters
   }
 }
 
@@ -47,8 +73,8 @@ app.get('/', (req, res) => {
 
 app.get('/api/profile', (req, res) => {
   if (req.cookies.account !== undefined) {
-    const username = req.cookies.account.username;
-    const foundAccount = accounts.find(account => account.username === username);
+    const accountCookie = req.cookies.account;
+    const foundAccount = accounts.find(account => account.cookie === accountCookie);
     if (foundAccount) {
       res.json({
         result: "success",
@@ -64,8 +90,8 @@ app.get('/api/profile', (req, res) => {
 
 app.post('/api/profile', (req, res) => {
   if (req.cookies.account !== undefined) {
-    const username = req.cookies.account.username;
-    const foundAccount = accounts.find(account => account.username === username);
+    const accountCookie = req.cookies.account;
+    const foundAccount = accounts.find(account => account.cookie === accountCookie);
     if (foundAccount !== undefined) {
       if (req.body.class_ !== undefined) {
         if (req.body.class_ === "Warrior" || req.body.class_ === "Scholar") {
@@ -95,7 +121,7 @@ app.post('/api/login', (req, res) => {
     res.json({ result: "wrong password" });
   } else {
     res
-      .cookie("account", foundAccount.username, {
+      .cookie("account", foundAccount.cookie, {
         httpOnly: true,
         secure: true,
         sameSite: "strict",

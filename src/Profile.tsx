@@ -2,26 +2,26 @@ import { useEffect, useState } from "react"
 
 type Class = "Warrior" | "Scholar";
 
-function Profile() {
+function Profile({ enterRealm }: { enterRealm: () => void }) {
   const [playerClass, setPlayerClass] = useState<Class>("Scholar");
-  async function submitPlayerClass() {
+  async function onClickEnterRealm() {
     await fetch("/api/profile", {
       method: "POST",
       body: JSON.stringify({
-        username,
-        password
+        class_: playerClass
       }),
       headers: {
         'Content-Type': 'application/json',
       }
     });
+    enterRealm();
   }
   useEffect(() => {
     fetch("/api/profile/")
       .then(res => res.json())
       .then(data => {
         if (data.profile.class_ !== undefined) {
-          setPlayerClass(data.class_);
+          setPlayerClass(data.profile.class_);
         }
       });
   }, []);
@@ -31,7 +31,7 @@ function Profile() {
 			<ClassHeading>The {playerClass}</ClassHeading>
 			<ClassImage class_={playerClass} />
 			<ClassList selectClass={setPlayerClass} />
-      <button onClick={submitPlayerClass}>Enter Realm</button>
+      <button onClick={onClickEnterRealm}>Enter Realm</button>
     </>
   );
 }
