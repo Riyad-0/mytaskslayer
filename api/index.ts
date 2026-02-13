@@ -63,6 +63,14 @@ interface Profile {
   monsters: Monster[]
 }
 
+function getAccountByCookie(cookie: string): Account | undefined {
+  return accounts.find(account => account.cookie === cookie);
+}
+
+function getAccountByUsername(username: string): Account | undefined {
+  return accounts.find(account => account.username === username);
+}
+
 function getProfile(account: Account): Profile {
   return {
     username: account.username,
@@ -78,7 +86,7 @@ app.get('/', (req, res) => {
 app.get('/api/profile', (req, res) => {
   if (req.cookies.account !== undefined) {
     const accountCookie = req.cookies.account;
-    const foundAccount = accounts.find(account => account.cookie === accountCookie);
+    const foundAccount = getAccountByCookie(accountCookie);
     if (foundAccount) {
       res.json({
         result: "success",
@@ -95,7 +103,7 @@ app.get('/api/profile', (req, res) => {
 app.post('/api/profile', (req, res) => {
   if (req.cookies.account !== undefined) {
     const accountCookie = req.cookies.account;
-    const foundAccount = accounts.find(account => account.cookie === accountCookie);
+    const foundAccount = getAccountByCookie(accountCookie);
     if (foundAccount !== undefined) {
       if (req.body.class_ !== undefined) {
         if (req.body.class_ === "Warrior" || req.body.class_ === "Scholar") {
@@ -116,9 +124,7 @@ app.post('/api/profile', (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
-  const foundAccount = accounts.find(account => 
-    req.body.username == account.username
-  );
+  const foundAccount = getAccountByUsername(req.body.username)
   if (foundAccount == undefined) {
     res.json({ result: "account not found"});
   } else if (foundAccount.password !== req.body.password) {
