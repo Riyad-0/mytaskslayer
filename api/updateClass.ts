@@ -1,20 +1,32 @@
 import { app, getUserByCookie } from ".";
-import express, { Request, Response } from 'express';
+import express, { Request, RequestHandler, Response } from 'express';
 import { getProfile, Profile } from "./profile";
 import { Class } from "./types";
+import z from "zod";
+import { classSchema } from "./zodSchemas";
 
-export namespace UpdateClass {
-  export type ReqBody = {
-    class_: Class
-  };
-  export type ResBody =
-    | { result: "success", profile: Profile }
-    | { result: "invalid class" | "not logged in" | "session expired" };
+export type ReqBody = {
+  class_: Class
+};
+export type ResBody =
+  | { result: "success", profile: Profile }
+  | { result: "invalid class" | "not logged in" | "session expired" };
 
-  export const path = "/api/class";
+export const path = "/api/class";
+
+const reqBodySchema = z.object({ class_: classSchema });
+
+function validateRequestBody(body: any): body is ReqBody {
+  return true;
 }
 
-app.post(UpdateClass.path, async (req, res: Response<UpdateClass.ResBody>) => {
+app.post(path, async (req, res: Response<ResBody>) => {
+  const validate = reqBodySchema.safeParse(req.body);
+  if (!validate.success) {
+    res.json()
+  } else {
+    const body = validate.data;
+  }
   if (req.cookies.account !== undefined) {
     const accountCookie = req.cookies.account;
     const foundAccount = await getUserByCookie(accountCookie);

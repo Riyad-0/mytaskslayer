@@ -1,3 +1,5 @@
+import z from "zod";
+
 export type User = Account | Guest;
 
 export interface Account {
@@ -15,6 +17,7 @@ export interface Guest {
 }
 
 export type Class = "Warrior" | "Scholar";
+
 
 export interface Monster {
   name: string,
