@@ -5,13 +5,13 @@ export type User = Account | Guest;
 export interface Account {
   username: string,
   password: string,
-  cookie: string,
+  sessionId: string,
   class_: Class,
   monsters: Monster[]
 }
 
 export interface Guest {
-  cookie: string,
+  sessionId: string,
   class_: Class,
   monsters: Monster[]
 }
@@ -34,5 +34,5 @@ export function hasAccount(user: User): user is Account {
 }
 
 export function displayName(user: User): string {
-  return hasAccount(user) ? user.username : ("Guest" + user.cookie);
+  return hasAccount(user) ? user.username : ("Guest" + user.sessionId);
 }

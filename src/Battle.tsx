@@ -21,21 +21,41 @@ function Battle() {
   }, []);
   return (
     <>
-      {(monsters === undefined) ?
-        "Loading..." :
-        (monsters.length === 0) ?
-          "No monsters yet." :
-          monsters.map(monster =>
-            <div key={monster.name}>
-              <div>{formatLevel(monster.level)}</div>
-              <div>{monster.name}</div>
-              <div>{monster.task}</div>
-              <div>HP</div>
-              <div>{monster.currentHp}/{monster.maxHp}</div>
-              <button>Attack</button>
-            </div>
-          )
-      }
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          width: "50%",
+          margin: "auto"
+        }}
+      >
+        {(monsters === undefined) ?
+          "Loading..." :
+          (monsters.length === 0) ?
+            "No monsters yet." :
+            monsters.map(monster =>
+              <div
+                key={monster.name}
+                // style={{
+                //   background: "#D9D9D9"
+                // }}
+              >
+                <div>{formatLevel(monster.level)}</div>
+                <div>{monster.name}</div>
+                <div>{monster.task}</div>
+                <div>HP</div>
+                <div>{monster.currentHp}/{monster.maxHp}</div>
+                <button
+                  // style={{
+                  //   background: "#CF3A3A",
+                  //   color: "white",
+                  //   padding: 10
+                  // }}
+                >Attack</button>
+              </div>
+            )
+        }
+      </div>
     </>
   );
 }

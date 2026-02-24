@@ -1,4 +1,4 @@
-import { useState, type SetStateAction } from "react";
+import { useState } from "react";
 
 type Change = React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>;
 type Submit = React.SubmitEventHandler<HTMLFormElement>;

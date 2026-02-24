@@ -28,7 +28,7 @@ async function readData(): Promise<User[]> {
 }
 
 async function writeData(data: User[]) {
-  fs.writeFile(dataFilePath, JSON.stringify(data));
+  fs.writeFile(dataFilePath, JSON.stringify(data, null, 2));
 }
 
 const dataFile = {

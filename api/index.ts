@@ -1,9 +1,9 @@
-import express, { Request, Response } from 'express';
+import express, { CookieOptions, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { profile } from 'console';
-import { Account, Class, displayName, hasAccount, Monster, User } from './types';
+import { Account, Class, displayName, Guest, hasAccount, Monster, User } from './types';
 import dataFile from './data';
 import { getProfile, Profile } from './profile';
 
@@ -22,7 +22,7 @@ const users = ["John Smith", "Rebecca Wafer", "Phil Hartman"];
 const oldAccounts: Account[] = [{
   username: "Bob",
   password: "123",
-  cookie: "Bob",
+  sessionId: "Bob",
   class_: "Scholar",
   monsters: [
     {
@@ -42,14 +42,14 @@ const oldAccounts: Account[] = [{
   ]
 }];
 
-dataFile.getUsers().then(accounts => {
-  if (accounts.length === 0) {
+dataFile.getUsers().then(users => {
+  if (users.length === 0) {
     dataFile.addUser(oldAccounts[0]);
   }
 });
 
 export async function getUserByCookie(cookie: string): Promise<User | undefined> {
-  return (await dataFile.getUsers()).find(user => user.cookie === cookie);
+  return (await dataFile.getUsers()).find(user => user.sessionId === cookie);
 }
 
 export async function getAccountByUsername(username: string): Promise<Account | undefined> {
@@ -61,11 +61,35 @@ export async function getAccountByUsername(username: string): Promise<Account | 
   return undefined;
 }
 
+async function generateGuest(): Promise<Guest> {
+  const cookie = await generateSessionId();
+  return {
+    sessionId: cookie,
+    class_: "Scholar",
+    monsters: [
+      {
+        name: "Dust Golem",
+        task: "fold the mountain",
+        level: 8,
+        currentHp: 5,
+        maxHp: 10,
+      },
+      {
+        name: "Caffeine Wraith",
+        task: "no coffee after 2pm",
+        level: "boss",
+        currentHp: 1,
+        maxHp: 1
+      }
+    ]
+  }
+}
+
 async function generateSessionId(): Promise<string> {
   while (true) {
     const generatedCookie = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString();
     const isCookieInUse = (await dataFile.getUsers()).some(account =>
-      account.cookie === generatedCookie
+      account.sessionId === generatedCookie
     );
     if (!isCookieInUse) {
       return generatedCookie;
@@ -73,14 +97,22 @@ async function generateSessionId(): Promise<string> {
   }
 }
 
+const userCookieName = "user";
+const userCookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "strict",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 app.get('/', (req, res) => {
   res.send('Hello Express!');
 });
 
 app.get('/api/profile', async (req, res) => {
-  if (req.cookies.account !== undefined) {
-    const accountCookie = req.cookies.account;
-    const foundAccount = await getUserByCookie(accountCookie);
+  if (req.cookies.user !== undefined) {
+    const userCookie = req.cookies.user;
+    const foundAccount = await getUserByCookie(userCookie);
     if (foundAccount) {
       res.json({
         result: "success",
@@ -90,7 +122,12 @@ app.get('/api/profile', async (req, res) => {
       res.json({ result: "session expired" });
     }
   } else {
-    res.json({ result: "not logged in"});
+    const guest = await generateGuest();
+    await dataFile.addUser(guest);
+    res
+      .cookie(userCookieName, guest.sessionId, userCookieOptions)
+      .json({ result: "success", profile: getProfile(guest)});
+    // res.json({ result: "not logged in" });
   }
 });
 
@@ -105,26 +142,40 @@ export namespace UpdateClass {
   export const path = "/api/class";
 }
 
+function isClass(class_: any): class_ is Class {
+  return class_ === "Scholar" || class_ === "Warrior";
+}
+
 app.post(UpdateClass.path, async (req, res: Response<UpdateClass.ResBody>) => {
-  if (req.cookies.account !== undefined) {
-    const accountCookie = req.cookies.account;
-    const foundAccount = await getUserByCookie(accountCookie);
-    if (foundAccount !== undefined) {
-      if (req.body.class_ !== undefined) {
-        if (req.body.class_ === "Warrior" || req.body.class_ === "Scholar") {
-          foundAccount.class_ = req.body.class_;
-          res.json({ result: "success", profile: getProfile(foundAccount) });
-        } else {
-          res.json({ result: "invalid class" });
-        }
-      } else {
-        res.json({ result: "success", profile: getProfile(foundAccount) });
-      }
+  const class_ = req.body.class_;
+  if (!isClass(class_)) {
+    res.json({ result: "invalid class" });
+    return;
+  }
+  if (req.cookies.user !== undefined) {
+    const userCookie = req.cookies.user;
+    const foundUser = await getUserByCookie(userCookie);
+    if (foundUser !== undefined) {
+      // if (req.body.class_ !== undefined) {
+        // if (req.body.class_ === "Warrior" || req.body.class_ === "Scholar") {
+          foundUser.class_ = class_;
+          res.json({ result: "success", profile: getProfile(foundUser) });
+        // } else {
+        //   res.json({ result: "invalid class" });
+        // }
+      // } else {
+      //   res.json({ result: "success", profile: getProfile(foundUser) });
+      // }
     } else {
       res.json({ result: "session expired" });
     }
   } else {
-    res.json({ result: "not logged in"});
+    const guest = await generateGuest();
+    guest.class_ = class_;
+    await dataFile.addUser(guest);
+    res
+      .cookie(userCookieName, guest.sessionId, userCookieOptions)
+      .json({ result: "success", profile: getProfile(guest) });
   }
 });
 
@@ -136,12 +187,7 @@ app.post('/api/login', async (req, res) => {
     res.json({ result: "wrong password" });
   } else {
     res
-      .cookie("account", foundAccount.cookie, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      })
+      .cookie(userCookieName, foundAccount.sessionId, userCookieOptions)
       .json({ result: "success" });
     // res.json({ result: "success" })
     //   .cookie("account", foundAccount.username, {
@@ -163,17 +209,12 @@ app.post('/api/register', async (req, res) => {
     await dataFile.addUser({
       username: req.body.username,
       password: req.body.password,
-      cookie: accountCookie,
+      sessionId: accountCookie,
       class_: "Scholar",
       monsters: []
     });
     res
-      .cookie("account", accountCookie, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      })
+      .cookie(userCookieName, accountCookie, userCookieOptions)
       .json({ result: "success" });
   }
 });
