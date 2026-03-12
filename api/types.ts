@@ -1,6 +1,6 @@
-import z from "zod";
+export type User = RegisteredUser | Guest;
 
-export type User = Account | Guest;
+export type RegisteredUser = Account;
 
 export interface Account {
   username: string,
@@ -29,10 +29,18 @@ export interface Monster {
 
 export type Level = number | "boss";
 
-export function hasAccount(user: User): user is Account {
-  return "username" in user && "password" in user;
+function isRegistered(user: User): user is RegisteredUser {
+  return "account" in user;
+}
+
+export function getAccount(user: User): Account | null {
+  if (isRegistered(user)) {
+    return user;
+  } else {
+    return null;
+  }
 }
 
 export function displayName(user: User): string {
-  return hasAccount(user) ? user.username : ("Guest" + user.sessionId);
+  return isRegistered(user) ? user.username : ("Guest" + user.sessionId);
 }

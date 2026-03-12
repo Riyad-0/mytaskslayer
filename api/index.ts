@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { profile } from 'console';
-import { Account, Class, displayName, Guest, hasAccount, Monster, User } from './types';
+import { Account, Class, displayName, getAccount, Guest, Monster, User } from './types';
 import dataFile from './data';
 import { getProfile, Profile } from './profile';
 
@@ -54,8 +54,9 @@ export async function getUserByCookie(cookie: string): Promise<User | undefined>
 
 export async function getAccountByUsername(username: string): Promise<Account | undefined> {
   for (const user of (await dataFile.getUsers())) {
-    if (hasAccount(user) && user.username === username) {
-      return user;
+    const account = getAccount(user);
+    if (account !== null && account.username === username) {
+      return account;
     }
   }
   return undefined;
@@ -88,8 +89,8 @@ async function generateGuest(): Promise<Guest> {
 async function generateSessionId(): Promise<string> {
   while (true) {
     const generatedCookie = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString();
-    const isCookieInUse = (await dataFile.getUsers()).some(account =>
-      account.sessionId === generatedCookie
+    const isCookieInUse = (await dataFile.getUsers()).some(user =>
+      user.sessionId === generatedCookie
     );
     if (!isCookieInUse) {
       return generatedCookie;
@@ -138,15 +139,13 @@ export namespace UpdateClass {
   export type ResBody =
     | { result: "success", profile: Profile }
     | { result: "invalid class" | "not logged in" | "session expired" };
-
-  export const path = "/api/class";
 }
 
 function isClass(class_: any): class_ is Class {
   return class_ === "Scholar" || class_ === "Warrior";
 }
 
-app.post(UpdateClass.path, async (req, res: Response<UpdateClass.ResBody>) => {
+app.post("/api/class", async (req, res: Response<UpdateClass.ResBody>) => {
   const class_ = req.body.class_;
   if (!isClass(class_)) {
     res.json({ result: "invalid class" });
