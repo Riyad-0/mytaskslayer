@@ -2,7 +2,6 @@
   "name": "mytaskslayer",
   "private": true,
   "workspaces": [
-    "api",
     "client",
     "client/api",
     "server"

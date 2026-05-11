@@ -25,11 +25,12 @@ function InsideRouter() {
 }
 
 function App() {
-  return (
-    <Router>
-      <InsideRouter />
-    </Router>
-  );
+  return <div></div>;
+  // return (
+  //   <Router>
+  //     <InsideRouter />
+  //   </Router>
+  // );
 }
 
 export default App;
