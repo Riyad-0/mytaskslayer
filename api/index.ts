@@ -227,3 +227,5 @@ app.get('/api/posts/:postId/comments/:commentId', (req, res) => {
 });
 
 app.listen(port, () => console.log(`api: http://localhost:${port}`));
+
+export default app;
