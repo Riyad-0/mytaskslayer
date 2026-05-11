@@ -60,14 +60,18 @@ async function addUser(user) {
       break;
     }
     case "remote": {
-      await DbUser.insertOne({
-        _id: user.session.id,
-        sessionCreated: user.session.created,
-        hp: user.hp,
-        xp: user.xp,
-        class_: user.class_,
-        monsters: user.monsters,
-      });
+      try {
+        await DbUser.insertOne({
+          _id: user.session.id,
+          sessionCreated: user.session.created,
+          hp: user.hp,
+          xp: user.xp,
+          class_: user.class_,
+          monsters: user.monsters,
+        });
+      } catch (e) {
+        // TODO: handle duplicate key error
+      }
       break;
     }
   }
