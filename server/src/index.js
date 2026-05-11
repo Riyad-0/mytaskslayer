@@ -65,9 +65,9 @@ app.get('/api/profile', async (req, res) => {
       // res.json({ result: "session expired", profile: getProfile(guest)});
     }
   } else {
-    const sessionId = req.headers['X-Guest-Id'];
+    const sessionId = req.headers['x-guest-id'];
     if (sessionId === undefined || Array.isArray(sessionId)) {
-      res.json({ result: "not logged in", guestIdUndefined: sessionId === undefined });
+      res.json({ result: "not logged in" });
     } else {
       const guest = await generateGuestWithId(sessionId);
       await data.addUser(guest);
