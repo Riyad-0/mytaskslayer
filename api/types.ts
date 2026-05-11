@@ -30,7 +30,7 @@ export interface Monster {
 export type Level = number | "boss";
 
 function isRegistered(user: User): user is RegisteredUser {
-  return "account" in user;
+  return "username" in user;
 }
 
 export function getAccount(user: User): Account | null {
