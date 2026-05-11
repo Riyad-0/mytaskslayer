@@ -1,4 +1,5 @@
 import express from 'express';
+const a = 40;
 
 const app = express();
 const PORT = process.env.PORT || 5000;
