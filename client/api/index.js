@@ -1,15 +1,20 @@
-import express from 'express';
-const a = 40;
+// src/index.js
+import express from "express";
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+// src/a.js
+var a = 50;
+var a_default = a;
 
-app.get('/api/hello', (req, res) => {
-  res.send("Hello!" + " " + a);
+// src/index.js
+var app = express();
+var PORT = process.env.PORT || 5e3;
+app.get("/api/hello", (req, res) => {
+  res.send("Hello! " + a_default);
 });
-
 app.listen(PORT, () => {
   console.log(`Server running: http://localhost:${PORT}/`);
 });
-
-export default app;
+var index_default = app;
+export {
+  index_default as default
+};
