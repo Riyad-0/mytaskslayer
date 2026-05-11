@@ -3,14 +3,13 @@ import dataFile from "./dataFile";
 import { User as DbUser } from "./models/User";
 /** @import { User } from "./types" */
 
-/** @type {"local" | "remote"} */
-let env = "remote";
+/** @returns {"local" | "remote"} */
+function env() {
+  return process.env.LOCAL_DATA === "true" ? "local" : "remote";
+}
 
 async function init() {
-  if (process.env.LOCAL_DATA === "true") {
-    env = "local";
-  } else {
-    env = "remote";
+  if (env() === "remote") {
     if (process.env.MONGODB_URI === undefined) {
       console.error("Expected 'MONGODB_URI' environment variable");
       return;
@@ -29,7 +28,7 @@ async function init() {
  * @returns {Promise<User[]>}
  */
 async function getUsers() {
-  switch (env) {
+  switch (env()) {
     case "local": {
       return await dataFile.getUsers();
     }
@@ -54,7 +53,7 @@ async function getUsers() {
  * @param {User} user
  */
 async function addUser(user) {
-  switch (env) {
+  switch (env()) {
     case "local": {
       await dataFile.addUser(user);
       break;
@@ -81,7 +80,7 @@ async function addUser(user) {
  * @param {User} user
  */
 async function updateUser(user) {
-  switch (env) {
+  switch (env()) {
     case "local": {
       await dataFile.updateUser(user);
       break;

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useReducer, useRef, useState } from "react";
 import { frequencyUnits, isFrequencyUnit, isMonsterKind, monsterKinds, monsterName, randomMonsterKind } from "./types";
 import logo from "./assets/logo.png";
 import vampire from "./assets/vampire.webp";
@@ -36,11 +36,11 @@ import { get, post } from "./requests";
 
 function Home() {
   const [task, setTask] = useState("");
-  const [hp, setHp] = useState(null);
-  const [xp, setXp] = useState(null);
-  const [monsters, setMonsters] = useState(/** @type {Monster[]} */ ([]));
+  const [monsters, _setMonsters] = useState(/** @type {Monster[]} */ ([]));
   const [didSubmitTask, setDidSubmitTask] = useState(false);
   const [mode, setMode] = useState(/** @type {HomeMode} */ ("loading"));
+  // const [lastUpdate, setLastUpdate] = useState(Date.now());
+  const didUpdateMonsters = useRef(false);
   const guestId = useContext(GuestIdContext);
 
   useEffect(() => {
@@ -48,7 +48,7 @@ function Home() {
       console.log(data);
       const monsters = data?.profile?.monsters;
       if (Array.isArray(monsters)) {
-        setMonsters(monsters);
+        _setMonsters(monsters);
         if (monsters.length > 0) {
           setMode("task");
           return;
@@ -58,14 +58,19 @@ function Home() {
     });
   }, []);
 
+  useEffect(() => {
+    if (didUpdateMonsters.current) {
+      post('/api/monsters', guestId, { monsters });
+    }
+  }, [monsters]);
+
   /**
    * 
    * @param {Monster[]} monsters 
    */
-  function saveMonsters(monsters) {
-    post('/api/monsters', guestId, { monsters });
-    setMonsters(monsters);
-    console.log('haaaa')
+  function setMonsters(monsters) {
+    _setMonsters(monsters);
+    didUpdateMonsters.current = true;
   }
 
   function submitTask() {
@@ -99,7 +104,7 @@ function Home() {
     const frequencyUnit = 'second';
     const deadline = getDeadline(frequencyMagnitude, frequencyUnit);
     const hp = 2;
-    saveMonsters([
+    setMonsters([
       ...monsters,
       {
         id,
@@ -124,11 +129,19 @@ function Home() {
   /** @type {MonsterProps} */
   const monsterProps = {
     list: monsters,
-    set: saveMonsters,
+    set: setMonsters,
     update(callback) {
-      setMonsters(monsters => {
+      _setMonsters(monsters => {
         const newMonsters = callback(monsters);
-        post('/api/monsters', guestId, { monsters: newMonsters });
+        didUpdateMonsters.current = true;
+        // console.log(newMonsters === monsters);
+        // TODO: uncomment
+        // post('/api/monsters', guestId, { monsters: newMonsters });
+
+        // if (newMonsters !== monsters && (Date.now() - lastUpdate > 100)) {
+          // post('/api/monsters', guestId, { monsters: newMonsters });
+          // setLastUpdate(Date.now());
+        // }
         return newMonsters;
       });
     },
@@ -192,6 +205,50 @@ function Hero({ didSubmitTask }) {
  * @returns 
  */
 function MonsterSection({ monsters, task, setTask, submitTask }) {
+  const [_, setTime] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(Date.now());
+      monsters.update(monsters => {
+        let changed = false;
+        const newMonsters = monsters.map(found => {
+          if (found.deadline === null) return found;
+          const frequencyMagnitude = parseFrequencyMagnitude(found.frequencyMagnitude);
+          if (frequencyMagnitude === null) {
+            return found;
+          }
+          const deadline = found.deadline;
+          if (Date.now() < deadline) return found;
+          changed = true;
+          const newDeadline = getDeadline(frequencyMagnitude, found.frequencyUnit);
+          if (found.currentHp === 0) {
+            const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
+            const level = randomLevel();
+            console.log("revivve");
+            return {
+              ...found,
+              currentHp: hp,
+              level,
+              deadline: newDeadline,
+            };
+          } else {
+            return {
+              ...found,
+              deadline: newDeadline,
+            };
+          }
+        });
+        if (changed) {
+          return newMonsters;
+        } else {
+          return monsters;
+        }
+      });
+    }, 67);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
   /** @type {React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>} */
   function onChangeTask(e) {
     setTask(e.target.value);
@@ -254,23 +311,16 @@ function Monster({ monster, monsters }) {
  * }} props 
  */
 function MonsterView({ monster, monsters, switchToEdit }) {
-  const [_, setTime] = useState(Date.now());
   const name = monsterName(monster);
   function attack() {
     const newHp = Math.max(monster.currentHp - 1, 0);
-    console.log(newHp);
-
-
     if (newHp === 0) {
       monsters.setMonster({
         ...monster,
-        currentHp: newHp,
+        currentHp: 0,
       });
     } else {
       const newDeadline = tryAdvanceDeadline(monster);
-      if (newDeadline !== null) {
-        console.log(dayjs(newDeadline).format("mm:ss"));
-      }
       monsters.setMonster({
         ...monster,
         currentHp: newHp,
@@ -280,45 +330,6 @@ function MonsterView({ monster, monsters, switchToEdit }) {
   }
   const level = formatLevel(monster.level);
   const hp = monster.currentHp / monster.maxHp * 100;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTime(Date.now());
-      monsters.update(monsters => {
-        return monsters.map(found => {
-          if (found.id !== monster.id) return found;
-          if (found.deadline === null) return found;
-          const frequencyMagnitude = parseFrequencyMagnitude(found.frequencyMagnitude);
-          if (frequencyMagnitude === null) {
-            return found;
-          }
-          const deadline = found.deadline;
-          if (Date.now() < deadline) return found;
-          const newDeadline = getDeadline(frequencyMagnitude, found.frequencyUnit);
-          if (found.currentHp === 0) {
-            const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
-            const level = randomLevel();
-            console.log("revivve");
-            return {
-              ...found,
-              currentHp: hp,
-              level,
-              deadline: newDeadline,
-            };
-          } else {
-            console.log("chaneg");
-            return {
-              ...found,
-              deadline: newDeadline,
-            };
-          }
-        });
-      });
-    }, 67);
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
 
   return (
     <div className="font-sans p-2 bg-slate-700 rounded-sm text-slate-100" key={monster.id}>
@@ -335,7 +346,7 @@ function MonsterView({ monster, monsters, switchToEdit }) {
               </button>
             </div>
             <div>{monster.task}</div>
-            <MonsterFrequency monsters={monsters} monster={monster} />
+            <MonsterFrequency monster={monster} />
             <div className="flex flex-col grow justify-end gap-y-2 items-center mt-2">
               <div className="w-full h-1.5 bg-gray-500 rounded-[3px]">
                 <div
@@ -371,18 +382,16 @@ function AttackButtonOrStatus({ monster, attack }) {
 /**
  * 
  * @param {{
- *   monsters: MonsterProps
  *   monster: Monster
  * }} props 
  */
-function MonsterFrequency({ monsters, monster }) {
+function MonsterFrequency({ monster }) {
   const frequencyMagnitude = parseFrequencyMagnitude(monster.frequencyMagnitude);
   const frequencyResult = formatFrequency(monster.frequencyMagnitude, monster.frequencyUnit);
   return (
     (frequencyResult.invalidMagnitude || frequencyMagnitude === null || monster.deadline === null) ? 
       <div className="text-red-300">Invalid frequency</div> :
       <ValidMonsterFrequency
-        monsters={monsters}
         monster={monster}
         frequencyMagnitude={frequencyMagnitude}
         frequencyString={frequencyResult.value}
@@ -394,78 +403,17 @@ function MonsterFrequency({ monsters, monster }) {
 /**
  * 
  * @param {{
- *   monsters: MonsterProps
  *   monster: Monster
  *   frequencyMagnitude: number
  *   frequencyString: string
  *   deadline: number
  * }} props 
  */
-function ValidMonsterFrequency({ monsters, monster, frequencyMagnitude, frequencyString, deadline }) {
-  // const [time, setTime] = useState(Date.now());
+function ValidMonsterFrequency({ monster, frequencyMagnitude, frequencyString, deadline }) {
   const period = getPeriod(frequencyMagnitude, monster.frequencyUnit);
   const periodEnd = isTaskCompleted(monster) ? 
     (deadline - period) :
     deadline;
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setTime(Date.now());
-  //     monsters.update(monsters => {
-  //       return monsters.map(found => {
-  //         if (found.id !== monster.id) return found;
-  //         if (found.deadline === null) return found;
-  //         const frequencyMagnitude = parseFrequencyMagnitude(found.frequencyMagnitude);
-  //         if (frequencyMagnitude === null) {
-  //           return found;
-  //         }
-  //         const deadline = found.deadline;
-  //         const period = getPeriod(frequencyMagnitude, found.frequencyUnit);
-  //         const periodEnd = isTaskCompleted(found) ? 
-  //           (deadline - period) :
-  //           deadline;
-  //         if (Date.now() < periodEnd) return found;
-  //         const newDeadline = getDeadline(frequencyMagnitude, found.frequencyUnit);
-  //         if (found.currentHp === 0) {
-  //           const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
-  //           const level = randomLevel();
-  //           return {
-  //             ...found,
-  //             currentHp: hp,
-  //             level,
-  //             deadline: newDeadline,
-  //           };
-  //         } else {
-  //           return {
-  //             ...found,
-  //             deadline: newDeadline,
-  //           };
-  //         }
-  //       });
-  //     });
-  //     // if (Date.now() > periodEnd) {
-  //     //   const deadline = tryGetDeadline(monster.frequencyMagnitude, monster.frequencyUnit);
-  //     //   if (monster.currentHp === 0) {
-  //     //     const hp = monster.currentHp === 0 ? monster.maxHp : monster.currentHp;
-  //     //     const level = randomLevel();
-  //     //     setMonster({
-  //     //       ...monster,
-  //     //       currentHp: hp,
-  //     //       level,
-  //     //       deadline,
-  //     //     });
-  //     //   } else {
-  //     //     setMonster({
-  //     //       ...monster,
-  //     //       deadline,
-  //     //     });
-  //     //   }
-  //     // }
-  //     // setTime(Date.now());
-  //   }, 67);
-  //   return () => {
-  //     clearInterval(interval);
-  //   };
-  // }, []);
   const timeLeft = periodEnd - Date.now();
   const p = Math.max(Math.min(timeLeft / period, 1), 0);
   return (
