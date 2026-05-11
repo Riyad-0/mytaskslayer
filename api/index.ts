@@ -2,10 +2,10 @@ import express, { CookieOptions, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { profile } from 'console';
-import { Account, Class, displayName, getAccount, Guest, Monster, User } from './types';
-import dataFile from './data';
-import { getProfile, Profile } from './profile';
+// import { profile } from 'console';
+// import { Account, Class, displayName, getAccount, Guest, Monster, User } from './types';
+// import dataFile from './data';
+// import { getProfile, Profile } from './profile';
 
 const port = 3000;
 
