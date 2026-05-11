@@ -106,8 +106,8 @@ const userCookieOptions: CookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
-app.get('/', (req, res) => {
-  res.send('Hello Express!');
+app.get('/api/hello', (req, res) => {
+  res.send('Hello!');
 });
 
 app.get('/api/profile', async (req, res) => {
