@@ -67,7 +67,7 @@ app.get('/api/profile', async (req, res) => {
   } else {
     const sessionId = req.headers['X-Guest-Id'];
     if (sessionId === undefined || Array.isArray(sessionId)) {
-      res.json({ result: "not logged in" });
+      res.json({ result: "not logged in", guestId: sessionId });
     } else {
       const guest = await generateGuestWithId(sessionId);
       await data.addUser(guest);
