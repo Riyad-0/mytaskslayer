@@ -5,7 +5,6 @@
   "type": "module",
   "main": "src/index.js",
   "dependencies": {
-    "express": "^4.22.1",
     "@taskslayer/server": "^1.0.0"
   }
 }
