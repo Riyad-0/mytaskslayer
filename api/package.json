@@ -1,11 +1,11 @@
 {
-  "name": "api",
+  "name": "@taskslayer/api",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.js",
   "dependencies": {
     "express": "^4.22.1",
-    "server": "^1.0.0"
+    "@taskslayer/server": "^1.0.0"
   }
 }
