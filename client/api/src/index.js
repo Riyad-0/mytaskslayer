@@ -1,7 +1,7 @@
 import express from 'express';
-import app from "server";
+import test from "server";
 
-// const app = express();
+const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.get('/api/hello', (req, res) => {
