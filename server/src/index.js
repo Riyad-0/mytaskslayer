@@ -32,7 +32,9 @@ const sessionCookieOptions = {
 };
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  allowedHeaders: ["X-Guest-Id"]
+}));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(cookieParser());
