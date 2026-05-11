@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": [
     "client",
-    "client/vercel",
+    "client/api",
     "server"
   ]
 }
