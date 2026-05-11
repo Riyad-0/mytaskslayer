@@ -1,5 +1,5 @@
 import express from 'express';
-import test from "server";
+import test from "@taskslayer/server";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
