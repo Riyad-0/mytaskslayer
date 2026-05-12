@@ -130,6 +130,90 @@ app.post("/api/monsters", async (req, res) => {
   }
 });
 
+app.post("/api/hp", async (req, res) => {
+  const hp = req.body.hp;
+  if (typeof hp !== "number") {
+    res.json({ result: "invalid hp" });
+    return;
+  }
+  const sessionId = req.cookies[sessionCookieName];
+  if (sessionId !== undefined) {
+    const foundUser = await getUserBySessionId(sessionId);
+    if (foundUser !== undefined) {
+      foundUser.hp = hp;
+      await data.updateUser(foundUser);
+      res.json({ result: "success", profile: getProfile(foundUser) });
+    } else {
+      res.json({ result: "session expired" });
+    }
+  } else {
+    const guest = await generateGuest();
+    guest.hp = hp;
+    await data.addUser(guest);
+    res
+      .cookie(sessionCookieName, guest.session.id, sessionCookieOptions)
+      .json({ result: "success", profile: getProfile(guest) });
+  }
+});
+
+app.post("/api/slay", async (req, res) => {
+  const xp = req.body.xp;
+  const gold = req.body.gold;
+  if (typeof xp !== "number" || typeof gold !== "number") {
+    res.json({ result: "invalid slay" });
+    return;
+  }
+  const sessionId = req.cookies[sessionCookieName];
+  if (sessionId !== undefined) {
+    const foundUser = await getUserBySessionId(sessionId);
+    if (foundUser !== undefined) {
+      foundUser.xp = xp;
+      foundUser.gold = gold;
+      await data.updateUser(foundUser);
+      res.json({ result: "success", profile: getProfile(foundUser) });
+    } else {
+      res.json({ result: "session expired" });
+    }
+  } else {
+    const guest = await generateGuest();
+    guest.xp = xp;
+    guest.gold = gold;
+    await data.addUser(guest);
+    res
+      .cookie(sessionCookieName, guest.session.id, sessionCookieOptions)
+      .json({ result: "success", profile: getProfile(guest) });
+  }
+});
+
+app.post("/api/revive", async (req, res) => {
+  const hp = req.body.hp;
+  const gold = req.body.gold;
+  if (typeof hp !== "number" || typeof gold !== "number") {
+    res.json({ result: "invalid revive" });
+    return;
+  }
+  const sessionId = req.cookies[sessionCookieName];
+  if (sessionId !== undefined) {
+    const foundUser = await getUserBySessionId(sessionId);
+    if (foundUser !== undefined) {
+      foundUser.hp = hp;
+      foundUser.gold = gold;
+      await data.updateUser(foundUser);
+      res.json({ result: "success", profile: getProfile(foundUser) });
+    } else {
+      res.json({ result: "session expired" });
+    }
+  } else {
+    const guest = await generateGuest();
+    guest.hp = hp;
+    guest.gold = gold;
+    await data.addUser(guest);
+    res
+      .cookie(sessionCookieName, guest.session.id, sessionCookieOptions)
+      .json({ result: "success", profile: getProfile(guest) });
+  }
+});
+
 data.init().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

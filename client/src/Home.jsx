@@ -31,6 +31,9 @@ import { get, post } from "./requests";
  *   update: (callback: ((monsters: Monster[]) => Monster[])) => void
  *   setMonster: (monster: Monster) => void
  *   deleteMonster: (monster: Monster) => void
+ *   onMonsterDeath: (monster: Monster) => void
+ *   attackPlayer: (monster: Monster) => void
+ *   revive: () => void
  * }} MonsterProps
  */
 
@@ -54,13 +57,15 @@ function getPXp(xp) {
 
 function Home() {
   const [task, setTask] = useState("");
-  const [hp, setHp] = useState(/** @type {number | null} */ (null));
-  const [xp, setXp] = useState(/** @type {number | null} */ (null));
+  const [hp, _setHp] = useState(/** @type {number | null} */ (null));
+  const [xp, _setXp] = useState(/** @type {number | null} */ (null));
+  const [gold, _setGold] = useState(/** @type {number | null} */ (null));
   const [monsters, _setMonsters] = useState(/** @type {Monster[]} */ ([]));
   const [didSubmitTask, setDidSubmitTask] = useState(false);
   const [mode, setMode] = useState(/** @type {HomeMode} */ ("loading"));
   // const [lastUpdate, setLastUpdate] = useState(Date.now());
-  const didUpdateMonsters = useRef(false);
+  // const didUpdateHp = useRef(false);
+  // const didUpdateMonsters = useRef(false);
   const guestId = useContext(GuestIdContext);
 
   useEffect(() => {
@@ -69,14 +74,19 @@ function Home() {
       const monsters = data?.profile?.monsters;
       const hp = data?.profile?.hp;
       if (typeof hp === "number") {
-        setHp(hp);
+        _setHp(hp);
       }
       const xp = data?.profile?.xp;
       if (typeof xp === "number") {
-        setXp(xp);
+        _setXp(xp);
+      }
+      const gold = data?.profile?.gold;
+      if (typeof gold === "number") {
+        _setGold(gold);
       }
       if (Array.isArray(monsters)) {
         _setMonsters(monsters);
+
         if (monsters.length > 0) {
           setMode("task");
           return;
@@ -86,11 +96,26 @@ function Home() {
     });
   }, []);
 
-  useEffect(() => {
-    if (didUpdateMonsters.current) {
-      post('/api/monsters', guestId, { monsters });
-    }
-  }, [monsters]);
+  // useEffect(() => {
+  //   if (didUpdateHp.current) {
+  //     post('/api/hp', guestId, { hp });
+  //   }
+  // }, [hp]);
+
+  // useEffect(() => {
+  //   if (didUpdateMonsters.current) {
+  //     post('/api/monsters', guestId, { monsters });
+  //   }
+  // }, [monsters]);
+
+  /**
+   * 
+   * @param {number} hp 
+   */
+  function setHp(hp) {
+    _setHp(hp);
+    post('/api/hp', guestId, { hp });
+  }
 
   /**
    * 
@@ -98,7 +123,9 @@ function Home() {
    */
   function setMonsters(monsters) {
     _setMonsters(monsters);
-    didUpdateMonsters.current = true;
+    post('/api/monsters', guestId, { monsters });
+
+    // didUpdateMonsters.current = true;
   }
 
   function submitTask() {
@@ -161,7 +188,7 @@ function Home() {
     update(callback) {
       _setMonsters(monsters => {
         const newMonsters = callback(monsters);
-        didUpdateMonsters.current = true;
+        // didUpdateMonsters.current = true;
         // console.log(newMonsters === monsters);
         // TODO: uncomment
         // post('/api/monsters', guestId, { monsters: newMonsters });
@@ -184,6 +211,28 @@ function Home() {
     },
     deleteMonster(monster) {
       this.set(this.list.filter(found => found.id !== monster.id));
+    },
+    onMonsterDeath(monster) {
+      if (xp === null || gold === null) return;
+      const newXp = xp + 1;
+      const newGold = gold + 1;
+      _setXp(newXp);
+      _setGold(newGold);
+      post('/api/slay', guestId, { xp: newXp, gold: newGold });
+    },
+    attackPlayer(monster) {
+      if (hp === null) return;
+      const newHp = Math.max(hp - 1, 0);
+      setHp(newHp);
+    },
+    revive() {
+      if (xp === null || gold === null) return;
+      if (gold < 10) return;
+      const newHp = getPlayerMaxHp(xp);
+      const newGold = gold - 10;
+      setHp(newHp);
+      _setGold(newGold);
+      post('/api/revive', guestId, { hp: newHp, gold: newGold });
     }
   };
   return (
@@ -198,9 +247,9 @@ function Home() {
             <Hero didSubmitTask={didSubmitTask} />
           }
           {
-            (hp === null || xp === null) ?
+            (hp === null || xp === null || gold === null) ?
               <></> :
-              <MonsterSection monsters={monsterProps} task={task} hp={hp} xp={xp} setTask={setTask} submitTask={submitTask} />
+              <MonsterSection monsters={monsterProps} task={task} hp={hp} xp={xp} gold={gold} setTask={setTask} submitTask={submitTask} />
           }
         </>
       }
@@ -233,56 +282,101 @@ function Hero({ didSubmitTask }) {
  *   task: string
  *   hp: number
  *   xp: number
+ *   gold: number,
  *   setTask: (task: string) => void
  *   submitTask: () => void
  * }} props 
  * @returns 
  */
-function MonsterSection({ monsters, task, hp, xp, setTask, submitTask }) {
-  const [_, setTime] = useState(Date.now());
+function MonsterSection({ monsters, task, hp, xp, gold, setTask, submitTask }) {
+  const [initialTime, _] = useState(Date.now());
+  const [time, setTime] = useState(initialTime);
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(Date.now());
-      monsters.update(monsters => {
-        let changed = false;
-        const newMonsters = monsters.map(found => {
-          if (found.deadline === null) return found;
-          const frequencyMagnitude = parseFrequencyMagnitude(found.frequencyMagnitude);
-          if (frequencyMagnitude === null) {
-            return found;
-          }
-          const deadline = found.deadline;
-          if (Date.now() < deadline) return found;
-          changed = true;
-          const newDeadline = getDeadline(frequencyMagnitude, found.frequencyUnit);
-          if (found.currentHp === 0) {
-            const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
-            const level = randomLevel();
-            console.log("revivve");
-            return {
-              ...found,
-              currentHp: hp,
-              level,
-              deadline: newDeadline,
-            };
-          } else {
-            return {
-              ...found,
-              deadline: newDeadline,
-            };
-          }
-        });
-        if (changed) {
-          return newMonsters;
-        } else {
-          return monsters;
-        }
-      });
     }, 67);
     return () => {
       clearInterval(interval);
     };
   }, []);
+  useEffect(() => {
+    if (time === initialTime) return;
+    let changed = false;
+    const newMonsters = monsters.list.map(found => {
+      if (found.deadline === null) return found;
+      const frequencyMagnitude = parseFrequencyMagnitude(found.frequencyMagnitude);
+      if (frequencyMagnitude === null) {
+        return found;
+      }
+      const deadline = found.deadline;
+      if (time < deadline) return found;
+      changed = true;
+      const newDeadline = getDeadline(frequencyMagnitude, found.frequencyUnit);
+      if (found.currentHp === 0) {
+        const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
+        const level = randomLevel();
+        console.log("revivve");
+        return {
+          ...found,
+          currentHp: hp,
+          level,
+          deadline: newDeadline,
+        };
+      } else {
+        monsters.attackPlayer(found);
+        return {
+          ...found,
+          deadline: newDeadline,
+        };
+      }
+    });
+    if (changed) {
+      monsters.set(newMonsters);
+    }
+  }, [time]);
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setTime(Date.now());
+  //     monsters.update(monsters => {
+  //       let changed = false;
+  //       const newMonsters = monsters.map(found => {
+  //         if (found.deadline === null) return found;
+  //         const frequencyMagnitude = parseFrequencyMagnitude(found.frequencyMagnitude);
+  //         if (frequencyMagnitude === null) {
+  //           return found;
+  //         }
+  //         const deadline = found.deadline;
+  //         if (Date.now() < deadline) return found;
+  //         changed = true;
+  //         const newDeadline = getDeadline(frequencyMagnitude, found.frequencyUnit);
+  //         if (found.currentHp === 0) {
+  //           const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
+  //           const level = randomLevel();
+  //           console.log("revivve");
+  //           return {
+  //             ...found,
+  //             currentHp: hp,
+  //             level,
+  //             deadline: newDeadline,
+  //           };
+  //         } else {
+  //           return {
+  //             ...found,
+  //             deadline: newDeadline,
+  //           };
+  //         }
+  //       });
+  //       if (changed) {
+  //         return newMonsters;
+  //       } else {
+  //         return monsters;
+  //       }
+  //     });
+  //   }, 67);
+  //   return () => {
+  //     clearInterval(interval);
+  //   };
+  // }, []);
   /** @type {React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>} */
   function onChangeTask(e) {
     setTask(e.target.value);
@@ -291,6 +385,9 @@ function MonsterSection({ monsters, task, hp, xp, setTask, submitTask }) {
   function onSubmitTask(e) {
     e.preventDefault();
     submitTask();
+  }
+  function revive() {
+    monsters.revive();
   }
   const pHp = (hp / getPlayerMaxHp(xp)) * 100;
   const pXp = getPXp(xp);
@@ -310,6 +407,13 @@ function MonsterSection({ monsters, task, hp, xp, setTask, submitTask }) {
             style={{ width: `${pXp}%` }}
           ></div>
         </div>
+        {hp > 0 ?
+          <div className="mx-12 text-amber-300 text-end">Gold: {gold}</div> :
+          <div className="mx-12 flex items-center justify-between">
+            <button onClick={revive} className="bg-red-500 rounded text-gray-300 font-bold p-1.5">Revive? (10)</button>
+            <div className="text-amber-300 text-end">Gold: {gold}</div>
+          </div>
+        }
         <h2 className="home-monsters-heading mt-6">What monsters will we slay today?</h2>
         <form onSubmit={onSubmitTask}>
           <input
@@ -384,6 +488,7 @@ function MonsterView({ monster, monsters, switchToEdit }) {
         ...monster,
         currentHp: 0,
       });
+      monsters.onMonsterDeath(monster);
     } else {
       const newDeadline = tryAdvanceDeadline(monster);
       monsters.setMonster({

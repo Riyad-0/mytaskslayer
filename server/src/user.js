@@ -16,6 +16,7 @@ export async function generateGuest() {
     class_: "Scholar",
     hp: 10,
     xp: 0,
+    gold: 0,
     monsters: [
       // {
       //   name: "Dust Golem",
@@ -45,6 +46,7 @@ export async function generateGuestWithId(id) {
     class_: "Scholar",
     hp: 10,
     xp: 0,
+    gold: 0,
     monsters: [
       // {
       //   name: "Dust Golem",

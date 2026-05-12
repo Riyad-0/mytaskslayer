@@ -3,6 +3,7 @@
  * @property {string} displayName
  * @property {number} hp
  * @property {number} xp
+ * @property {number} gold
  * @property {Class} class_
  * @property {Monster[]} monsters
  */
@@ -16,6 +17,7 @@
  * @property {Session} session
  * @property {number} hp
  * @property {number} xp
+ * @property {number} gold
  * @property {Class} class_
  * @property {Monster[]} monsters
  */

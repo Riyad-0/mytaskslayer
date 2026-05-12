@@ -41,20 +41,21 @@ function Test() {
 function Timer() {
   const initialDeadline = Date.now() + 5000;
   const [deadline, setDeadline] = useState(initialDeadline);
-  const didUpdateDeadline = useRef(false);
+  const [initialTime, _] = useState(Date.now());
+  const [time, setTime] = useState(Date.now());
   useEffect(() => {
-    if (didUpdateDeadline.current) {
-      console.log("deadline:", deadline);
+    if (time === initialTime) {
+      return;
     }
-  }, [deadline]);
+    if (time < deadline) {
+      return;
+    }
+    console.log("deadline:", deadline);
+    setDeadline(deadline + 5000);
+  }, [time]);
   useEffect(() => {
     const interval = setInterval(() => {
-      setDeadline(deadline => {
-        if (Date.now() < deadline) return deadline;
-        const newDeadline = deadline + 5000;
-        didUpdateDeadline.current = true;
-        return newDeadline;
-      });
+      setTime(Date.now());
     }, 67);
     return () => {
       clearInterval(interval);
