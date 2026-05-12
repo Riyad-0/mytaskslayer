@@ -43,10 +43,19 @@ function getPlayerMaxHp(xp) {
   return 10 + Math.floor(xp / 200);
 }
 
+/**
+ * 
+ * @param {number} xp
+ * @returns {number}
+ */
+function getPXp(xp) {
+  return 50;
+}
+
 function Home() {
   const [task, setTask] = useState("");
-  const [currentHp, setCurrentHp] = useState(null);
-  const [xp, setXp] = useState(null);
+  const [hp, setHp] = useState(/** @type {number | null} */ (null));
+  const [xp, setXp] = useState(/** @type {number | null} */ (null));
   const [monsters, _setMonsters] = useState(/** @type {Monster[]} */ ([]));
   const [didSubmitTask, setDidSubmitTask] = useState(false);
   const [mode, setMode] = useState(/** @type {HomeMode} */ ("loading"));
@@ -58,6 +67,14 @@ function Home() {
     get('/api/profile', guestId).then(data => {
       console.log(data);
       const monsters = data?.profile?.monsters;
+      const hp = data?.profile?.hp;
+      if (typeof hp === "number") {
+        setHp(hp);
+      }
+      const xp = data?.profile?.xp;
+      if (typeof xp === "number") {
+        setXp(xp);
+      }
       if (Array.isArray(monsters)) {
         _setMonsters(monsters);
         if (monsters.length > 0) {
@@ -180,7 +197,11 @@ function Home() {
             <></> :
             <Hero didSubmitTask={didSubmitTask} />
           }
-          <MonsterSection monsters={monsterProps} task={task} setTask={setTask} submitTask={submitTask} />
+          {
+            (hp === null || xp === null) ?
+              <></> :
+              <MonsterSection monsters={monsterProps} task={task} hp={hp} xp={xp} setTask={setTask} submitTask={submitTask} />
+          }
         </>
       }
     </>
@@ -210,12 +231,14 @@ function Hero({ didSubmitTask }) {
  * @param {{
  *   monsters: MonsterProps
  *   task: string
+ *   hp: number
+ *   xp: number
  *   setTask: (task: string) => void
  *   submitTask: () => void
  * }} props 
  * @returns 
  */
-function MonsterSection({ monsters, task, setTask, submitTask }) {
+function MonsterSection({ monsters, task, hp, xp, setTask, submitTask }) {
   const [_, setTime] = useState(Date.now());
   useEffect(() => {
     const interval = setInterval(() => {
@@ -269,10 +292,25 @@ function MonsterSection({ monsters, task, setTask, submitTask }) {
     e.preventDefault();
     submitTask();
   }
+  const pHp = (hp / getPlayerMaxHp(xp)) * 100;
+  const pXp = getPXp(xp);
   return (
     <div className="home-monsters-section">
       <div className="home-monsters-container">
-        <h2 className="home-monsters-heading">What monsters will we slay today?</h2>
+        {/* <div className="text-white text-center text-2xl">Guest</div> */}
+        <div className="h-2 mx-12 bg-gray-500 rounded-[3px]">
+          <div
+            className="h-full bg-red-500 rounded-[3px]"
+            style={{ width: `${pHp}%` }}
+          ></div>
+        </div>
+        <div className="h-2 mx-12 bg-gray-500 rounded-[3px]">
+          <div
+            className="h-full bg-green-400 rounded-[3px]"
+            style={{ width: `${pXp}%` }}
+          ></div>
+        </div>
+        <h2 className="home-monsters-heading mt-6">What monsters will we slay today?</h2>
         <form onSubmit={onSubmitTask}>
           <input
             className="home-monsters-input"
@@ -281,7 +319,22 @@ function MonsterSection({ monsters, task, setTask, submitTask }) {
             placeholder="try: do the laundry"
           />
         </form>
-        
+        {/* <div
+          className="grid text-white items-center justify-center gap-x-2"
+          style={{
+            gridTemplateColumns: "1fr 3fr 1fr"
+          }}
+        >
+          <div className="justify-self-end text-red-400">HP</div>
+          <div className="justify-self-center w-full">
+            <div className="h-1.5 bg-gray-500 rounded-[3px]">
+              <div
+                className="h-1.5 bg-red-500 rounded-[3px]"
+                style={{ width: `${90}%` }}
+              ></div>
+            </div>
+          </div>
+        </div> */}
         <div className="home-monsters">
           {monsters.list.map(m => {
             return (
