@@ -34,8 +34,19 @@ import { get, post } from "./requests";
  * }} MonsterProps
  */
 
+/**
+ * 
+ * @param {number} xp
+ * @returns {number}
+ */
+function getPlayerMaxHp(xp) {
+  return 10 + Math.floor(xp / 200);
+}
+
 function Home() {
   const [task, setTask] = useState("");
+  const [currentHp, setCurrentHp] = useState(null);
+  const [xp, setXp] = useState(null);
   const [monsters, _setMonsters] = useState(/** @type {Monster[]} */ ([]));
   const [didSubmitTask, setDidSubmitTask] = useState(false);
   const [mode, setMode] = useState(/** @type {HomeMode} */ ("loading"));
@@ -270,6 +281,7 @@ function MonsterSection({ monsters, task, setTask, submitTask }) {
             placeholder="try: do the laundry"
           />
         </form>
+        
         <div className="home-monsters">
           {monsters.list.map(m => {
             return (
