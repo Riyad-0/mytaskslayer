@@ -41,6 +41,7 @@ async function getUsers() {
           },
           hp: dbUser.hp,
           xp: dbUser.xp,
+          gold: dbUser.gold,
           class_: dbUser.class_,
           monsters: dbUser.monsters,
         };
@@ -65,6 +66,7 @@ async function addUser(user) {
           sessionCreated: user.session.created,
           hp: user.hp,
           xp: user.xp,
+          gold: user.gold,
           class_: user.class_,
           monsters: user.monsters,
         });
@@ -89,6 +91,7 @@ async function updateUser(user) {
       await DbUser.findByIdAndUpdate(user.session.id, {
         hp: user.hp,
         xp: user.xp,
+        gold: user.gold,
         class_: user.class_,
         monsters: user.monsters,
       }).exec();

@@ -3,6 +3,7 @@
  * @property {string} displayName
  * @property {number} hp
  * @property {number} xp
+ * @property {number} gold
  * @property {Class} class_
  * @property {Monster[]} monsters
  */
@@ -16,6 +17,7 @@
  * @property {Session} session
  * @property {number} hp
  * @property {number} xp
+ * @property {number} gold
  * @property {Class} class_
  * @property {Monster[]} monsters
  */
@@ -94,9 +96,56 @@ export const frequencyUnits = /** @type {const} */ ([
 
 /**
  * 
+ * @param {any} monsterKind 
+ * @returns {monsterKind is MonsterKind}
+ */
+export function isMonsterKind(monsterKind) {
+  return monsterKinds.includes(monsterKind);
+}
+
+/**
+ * 
  * @param {any} class_ 
  * @returns {class_ is Class}
  */
 export function isClass(class_) {
   return classes.includes(class_);
+}
+
+/**
+ * 
+ * @param {any} level 
+ * @returns {level is Class}
+ */
+export function isLevel(level) {
+  return typeof level === "number" || level === "boss";
+}
+
+/**
+ * 
+ * @param {any} unit 
+ * @returns {unit is FrequencyUnit}
+ */
+export function isFrequencyUnit(unit) {
+  return frequencyUnits.includes(unit);
+}
+
+/**
+ * 
+ * @param {any} monster 
+ * @returns {monster is Monster}
+ */
+export function isMonster(monster) {
+  return (
+    typeof monster?.id === "number" &&
+    typeof monster?.taskName === "string" &&
+    isMonsterKind(monster?.kind) &&
+    typeof monster?.task === "string" &&
+    isLevel(monster?.level) &&
+    typeof monster?.currentHp === "number" &&
+    typeof monster?.maxHp === "number" &&
+    typeof monster?.frequencyMagnitude === "string" &&
+    isFrequencyUnit(monster?.frequencyUnit) &&
+    (typeof monster?.deadline === "number" || monster?.deadline === null)
+  );
 }

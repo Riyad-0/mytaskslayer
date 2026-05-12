@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   sessionCreated: { type: Number, required: true },
   hp: { type: Number, required: true },
   xp: { type: Number, required: true },
+  gold: { type: Number, required: true },
   class_: { type: String, enum: ["Warrior", "Scholar", "Bard", "Monk"], required: true },
   monsters: { type: Array, default: [], required: true },
 }, { timestamps: true });

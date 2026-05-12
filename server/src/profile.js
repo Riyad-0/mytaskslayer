@@ -9,6 +9,7 @@ export function getProfile(user) {
     displayName: displayName(user),
     hp: user.hp,
     xp: user.xp,
+    gold: user.gold,
     class_: user.class_,
     monsters: user.monsters,
   };

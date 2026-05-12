@@ -1,6 +1,9 @@
 /**
  * @typedef {object} Profile
  * @property {string} displayName
+ * @property {number} hp
+ * @property {number} xp
+ * @property {number} gold
  * @property {Class} class_
  * @property {Monster[]} monsters
  */
@@ -85,6 +88,16 @@ export function isClass(class_) {
 
 /**
  * 
+ * @param {any} level 
+ * @returns {level is Class}
+ */
+export function isLevel(level) {
+  return typeof level === "number" || level === "boss";
+}
+
+
+/**
+ * 
  * @param {Class} class_ 
  * @returns {Class}
  */
@@ -137,4 +150,40 @@ export function isMonsterKind(monsterKind) {
  */
 export function isFrequencyUnit(unit) {
   return frequencyUnits.includes(unit);
+}
+
+/**
+ * 
+ * @param {any} monster 
+ * @returns {monster is Monster}
+ */
+export function isMonster(monster) {
+  return (
+    typeof monster?.id === "number" &&
+    typeof monster?.taskName === "string" &&
+    isMonsterKind(monster?.kind) &&
+    typeof monster?.task === "string" &&
+    isLevel(monster?.level) &&
+    typeof monster?.currentHp === "number" &&
+    typeof monster?.maxHp === "number" &&
+    typeof monster?.frequencyMagnitude === "string" &&
+    isFrequencyUnit(monster?.frequencyUnit) &&
+    (typeof monster?.deadline === "number" || monster?.deadline === null)
+  );
+}
+
+/**
+ * 
+ * @param {any} profile 
+ * @returns {profile is Profile}
+ */
+export function isProfile(profile) {
+  return (
+    typeof profile?.displayName === "string" &&
+    typeof profile?.hp === "number" &&
+    typeof profile?.xp === "number" &&
+    typeof profile?.gold === "number" &&
+    isClass(profile?.class_) &&
+    (Array.isArray(profile?.monsters) && profile.monsters.every(isMonster))
+  );
 }
