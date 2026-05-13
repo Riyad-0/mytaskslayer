@@ -362,6 +362,10 @@ function Hero({ didSubmitTask }) {
   );
 }
 
+function HeroOrHud({ didSubmitTask }) {
+
+}
+
 /**
  * 
  * @param {{
