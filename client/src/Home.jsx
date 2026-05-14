@@ -101,6 +101,15 @@ function seriesSum(a, d, n) {
 
 const reviveCost = 1;
 
+// TODO
+// Rename frequency to period
+// Rename frequencyMagnitude to periodValue
+// Add periodic boolean
+
+// Periodic (checkbox)
+
+// if Periodic
+
 function Home() {
   const [task, setTask] = useState("");
   const [hp, _setHp] = useState(/** @type {number | null} */ (null));
@@ -109,6 +118,7 @@ function Home() {
   const [monsters, _setMonsters] = useState(/** @type {Monster[]} */ ([]));
   const [didSubmitTask, setDidSubmitTask] = useState(false);
   const [mode, setMode] = useState(/** @type {HomeMode} */ ("loading"));
+  const [centralTransitionInProgress, setCentralTransitionInProgress] = useState(false);
   // const [lastUpdate, setLastUpdate] = useState(Date.now());
   // const didUpdateHp = useRef(false);
   // const didUpdateMonsters = useRef(false);
@@ -329,14 +339,18 @@ function Home() {
       {mode === "loading" ?
         <></> :
         <>
-          {mode === "task" ?
+          {/* <Central mode={"loading"} didSubmitTask={false} hp={0} xp={0} gold={0} revive={function () {
+            throw new Error("Function not implemented.");
+          } } /> */}
+          {/* {mode === "task" ?
             <></> :
             <Hero didSubmitTask={didSubmitTask} />
-          }
+          } */}
+          {hp !== null && xp !== null && gold !== null && (<Central mode={mode} didSubmitTask={didSubmitTask} hp={hp} xp={xp} gold={gold} revive={monsterProps.revivePlayer} setCentralTransitionInProgress={setCentralTransitionInProgress} />)}
           {
             (hp === null || xp === null || gold === null) ?
               <></> :
-              <MonsterSection mode={mode} didSubmitTask={didSubmitTask} monsters={monsterProps} task={task} hp={hp} xp={xp} gold={gold} setTask={setTask} submitTask={submitTask} />
+              <MonsterSection mode={mode} didSubmitTask={didSubmitTask} monsters={monsterProps} task={task} hp={hp} xp={xp} gold={gold} setTask={setTask} submitTask={submitTask} centralTransitionInProgress={centralTransitionInProgress} setCentralTransitionInProgress={setCentralTransitionInProgress} />
           }
         </>
       }
@@ -345,14 +359,85 @@ function Home() {
 }
 
 /**
- * 
- * @param {{ didSubmitTask: boolean }} props 
+ * @typedef {{ name: "idle" } | { name: "in progress", didUserScroll: boolean }} CentralTransitionState
  */
-function Hero({ didSubmitTask }) {
+
+/**
+ * 
+ * @param {{
+ *   mode: HomeMode
+ *   didSubmitTask: boolean
+ *   hp: number
+ *   xp: number
+ *   gold: number
+ *   revive: () => void
+ *   setCentralTransitionInProgress: (inProgress: boolean) => void
+ * }} props 
+ */
+function Central({ mode, didSubmitTask, hp, xp, gold, revive, setCentralTransitionInProgress }) {
+  const [heroTransitionEnded, setHeroTransitionEnded] = useState(false);
+  function onHeroTransitionStart() {
+    setCentralTransitionInProgress(true);
+  }
+  function onHeroTransitionEnd() {
+    setHeroTransitionEnded(true);
+    setCentralTransitionInProgress(false);
+  }
   return (
-    <div className={
-      (didSubmitTask ? "prepare-shrink shrink" : "prepare-shrink")
-    }>
+    <div className="grid mt-20 md:mt-8">
+      {mode === "hero" && (
+        <div className={heroTransitionEnded ? "invisible" : ""} style={{ gridArea: "1 / 1"}}>
+          <Hero didSubmitTask={didSubmitTask} onTransitionStart={onHeroTransitionStart} onTransitionEnd={onHeroTransitionEnd} />
+        </div>
+      )}
+      <div className={(mode === "hero" && !heroTransitionEnded ) ? "invisible" : ""} style={{ gridArea: "1 / 1"}}>
+        <Hud mode={mode} heroTransitionEnded={heroTransitionEnded} hp={hp} xp={xp} gold={gold} revive={revive} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 
+ * @param {{
+ *   didSubmitTask: boolean
+ *   onTransitionStart: () => void
+ *   onTransitionEnd: () => void
+ * }} props 
+ */
+function Hero({
+  didSubmitTask,
+  onTransitionStart: handleTransitionStart,
+  onTransitionEnd: handleTransitionEnd,
+}) {
+  const [disappeared, setDisappeared] = useState(false);
+  /** @type {React.TransitionEventHandler<HTMLDivElement>} */
+  function onTransitionStart(e) {
+    handleTransitionStart();
+    // console.log("STO:", e.propertyName);
+    // if (e.propertyName === "opacity") {
+    //   handleTransitionStart();
+    // }
+  }
+  /** @type {React.TransitionEventHandler<HTMLDivElement>} */
+  function onTransitionEnd(e) {
+    if (e.propertyName === "opacity") {
+      setDisappeared(true);
+      console.log("opacity!")
+    }
+    if (e.propertyName === "max-height") {
+      handleTransitionEnd();
+      console.log("max-height!")
+    }
+  }
+  return (
+    <div
+      className={
+        (didSubmitTask ? (disappeared ? "prepare-shrink disappear shrink" : "prepare-shrink disappear") : "prepare-shrink")
+      }
+      onTransitionStart={onTransitionStart}
+      onTransitionEnd={onTransitionEnd}
+    >
       <div className="hero">
         <img className="hero-logo" alt="logo" src={logo} />
         <div className="hero-heading">Task Slayer</div>
@@ -362,9 +447,51 @@ function Hero({ didSubmitTask }) {
   );
 }
 
-function HeroOrHud({ didSubmitTask }) {
-
+/**
+ * 
+ * @param {{
+ *   mode: HomeMode
+ *   heroTransitionEnded: boolean
+ *   hp: number
+ *   xp: number
+ *   gold: number
+ *   revive: () => void
+ * }} props 
+ */
+function Hud({ mode, heroTransitionEnded, hp, xp, gold, revive }) {
+  const maxHp = getPlayerMaxHp(xp);
+  const pHp = (hp / maxHp) * 100;
+  const pXp = getPXp(xp) * 100;
+  const level = levelFromXp(xp);
+  const xpInBar = xp - xpFromLevel(level);
+  const xpBarSize = xpFromLevel(level + 1) - xpFromLevel(level);
+  return (
+    <div className={mode === "task" ? "" : (heroTransitionEnded ? "prepare-appear appear" : "prepare-appear")}>
+      <div className="h-2 mx-12 bg-gray-500 rounded-[3px]">
+        <div
+          className="h-full bg-red-500 rounded-[3px]"
+          style={{ width: `${pHp}%` }}
+        ></div>
+      </div>
+      <div className="mx-12 text-red-500">Health: {Math.round(hp)}/{maxHp}</div>
+      <div className="h-2 mx-12 mt-4 bg-gray-500 rounded-[3px]">
+        <div
+          className="h-full bg-green-400 rounded-[3px]"
+          style={{ width: `${pXp}%` }}
+        ></div>
+      </div>
+      <div className="mx-12 text-green-400">Level {level} -  {xpInBar}/{xpBarSize}</div>
+      {hp > 0 ?
+        <div className="mx-12 text-amber-300 text-end">Gold: {gold}</div> :
+        <div className="mx-12 flex items-center justify-between">
+          <button onClick={revive} className="cursor-pointer bg-red-500 rounded text-gray-300 font-bold p-1.5">Revive? ({reviveCost})</button>
+          <div className="text-amber-300 text-end">Gold: {gold}</div>
+        </div>
+      }
+    </div>
+  );
 }
+
 
 /**
  * 
@@ -375,15 +502,25 @@ function HeroOrHud({ didSubmitTask }) {
  *   task: string
  *   hp: number
  *   xp: number
- *   gold: number,
+ *   gold: number
+ *   centralTransitionInProgress: boolean
  *   setTask: (task: string) => void
  *   submitTask: () => void
+ *   setCentralTransitionInProgress: (inProgress: boolean) => void
  * }} props 
  * @returns 
  */
-function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, setTask, submitTask }) {
+function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, centralTransitionInProgress, setTask, submitTask, setCentralTransitionInProgress }) {
   const [initialTime, _] = useState(Date.now());
   const [time, setTime] = useState(initialTime);
+  const [scrollTimeStamp, setScrollTimeStamp] = useState(/** @type {number | null} */ (null));
+  const taskInputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
+  useEffect(() => {
+    console.log("scroll:", scrollTimeStamp);
+    if (centralTransitionInProgress) {
+      setCentralTransitionInProgress(false);
+    }
+  }, [scrollTimeStamp]);
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(Date.now());
@@ -392,6 +529,27 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, set
       clearInterval(interval);
     };
   }, []);
+  useEffect(() => {
+    /** @type {(this: Window, ev: Event) => any} */
+    function onScroll(e) {
+      setScrollTimeStamp(e.timeStamp);
+      console.log("scroll cancel");
+    }
+    window.addEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+  useEffect(() => {
+    if (centralTransitionInProgress && taskInputRef.current !== null) {
+      const rect = taskInputRef.current.getBoundingClientRect();
+      if (rect.bottom < 0) {
+        taskInputRef.current.scrollIntoView();
+      }
+      // console.log("scroll", rect.bottom);
+      // taskInputRef.current.scrollIntoView();
+    }
+  }, [time]);
   useEffect(() => {
     if (time === initialTime) return;
     let changed = false;
@@ -492,7 +650,7 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, set
     <div className="home-monsters-section">
       <div className="home-monsters-container">
         {/* <div className="text-white text-center text-2xl">Guest</div> */}
-        <div className={mode === "task" ? "" : (didSubmitTask ? "prepare-appear appear" : "prepare-appear")}>
+        {/* <div className={mode === "task" ? "" : (didSubmitTask ? "prepare-appear appear" : "prepare-appear")}>
           <div className="h-2 mx-12 bg-gray-500 rounded-[3px]">
             <div
               className="h-full bg-red-500 rounded-[3px]"
@@ -514,7 +672,7 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, set
               <div className="text-amber-300 text-end">Gold: {gold}</div>
             </div>
           }
-        </div>
+        </div> */}
         <h2 className="home-monsters-heading mt-6">What monsters will we slay today?</h2>
         <form onSubmit={onSubmitTask}>
           <input
@@ -522,6 +680,7 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, set
             onChange={onChangeTask}
             value={task}
             placeholder="try: do the laundry"
+            ref={taskInputRef}
           />
         </form>
         {/* <div
@@ -1030,6 +1189,7 @@ function MonsterEdit({ monster, monsters, switchToView }) {
           })}
         </select>
       </div>
+      {/* <label className="ml-2 text-slate-400 font-bold text-sm">GOAL</label> */}
       {parseFrequencyMagnitude(monster.frequencyMagnitude) === null ?
         <div className="text-red-500">Invalid frequency</div> :
         <></>
@@ -1037,6 +1197,35 @@ function MonsterEdit({ monster, monsters, switchToView }) {
     </div>
   );
 }
+
+const goalTypes = ["every", "times"];
+
+// /**
+//  * 
+//  * @param {{
+//  *   monster: Monster
+//  *   onChangeFrequencyMagnitude: React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>
+//  *   onChangeFrequencyUnit: React.ChangeEventHandler<HTMLSelectElement, HTMLSelectElement>
+//  * }} props
+//  */
+// function Goal({ monster, onChangeFrequencyMagnitude, onChangeFrequencyUnit }) {
+//   return (
+//     <div className="flex gap-x-2">
+//       <div>Every</div>
+//       <select className="bg-slate-600 rounded-sm px-1 py-0.5" name='goal kind' value="every" onChange={}>
+//         {frequencyUnits.map(unit => {
+//           return (<option key={unit} value={unit}>{formatUnit(monster.frequencyMagnitude, unit)}</option>);
+//         })}
+//       </select>
+//       <input className="bg-slate-600 rounded-sm px-2 py-0.5 w-[8ch]" name='frequency magnitude' value={monster.frequencyMagnitude} onChange={onChangeFrequencyMagnitude} />
+//       <select className="bg-slate-600 rounded-sm px-1 py-0.5" name='frequency unit' value={monster.frequencyUnit} onChange={onChangeFrequencyUnit}>
+//         {frequencyUnits.map(unit => {
+//           return (<option key={unit} value={unit}>{formatUnit(monster.frequencyMagnitude, unit)}</option>);
+//         })}
+//       </select>
+//     </div>
+//   );
+// }
 
 function Header() {
   return (

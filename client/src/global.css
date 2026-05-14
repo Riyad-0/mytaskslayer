@@ -67,7 +67,7 @@ body {
   height: 32px;
 }
 
-@media screen and (max-width: 700px) {
+@media screen and (max-width: 768px) {
   .logo {
     height: 28px;
   }
@@ -115,12 +115,13 @@ body {
   /* display: none; */
   flex-direction: column;
   align-items: end;
+  z-index: 1;
   /* position: absolute;
   top: 16px;
   right: 16px; */
 }
 
-@media screen and (max-width: 700px) {
+@media screen and (max-width: 768px) {
   .home-header, .class-page-header {
     display: none;
   }
@@ -167,8 +168,9 @@ body {
 }
 
 .prepare-shrink {
-  max-height: 800px;
-  transition: max-height 1.6s ease-out;
+  max-height: 400px;
+  opacity: 1;
+  transition: max-height 0.5s linear, opacity 0.1s ease-in;
   overflow: hidden;
 }
 
@@ -177,7 +179,8 @@ body {
   flex-direction: column;
   align-items: center;
   row-gap: 12px;
-  margin-top: 80px;
+  margin-top: 48px;
+  margin-bottom: 76px;
   padding: 0 8px;
 }
 
@@ -205,7 +208,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 76px;
   width: 100%;
 }
 
@@ -261,10 +263,7 @@ body {
   color: var(--color-slate-100);
 }
 
-@media screen and (max-width: 700px) {
-  .hero {
-    margin-top: 128px;
-  }
+@media screen and (max-width: 768px) {
   .hero-heading {
     font-size: 2.7rem;
   }
@@ -290,7 +289,7 @@ body {
   display: none;
 }
 
-@media screen and (max-width: 700px) {
+@media screen and (max-width: 768px) {
   .class-page-mini-heading {
     display: block;
   }
@@ -671,12 +670,25 @@ body {
   max-height: 0;
 }
 
-.prepare-appear {
+.disappear {
+  opacity: 0;
+}
+
+/* .prepare-appear {
   max-height: 0;
-  transition: max-height 1.6s ease-out;
+  transition: max-height 3.6s ease-out;
   overflow: hidden;
 }
 
 .appear {
-  max-height: 1000px;
+  max-height: 800px;
+} */
+
+.prepare-appear {
+  opacity: 0;
+  transition: opacity 0.1s ease-out;
+}
+
+.appear {
+  opacity: 1;
 }
