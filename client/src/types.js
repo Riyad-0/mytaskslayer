@@ -21,9 +21,10 @@
  * @property {Level} level
  * @property {number} currentHp
  * @property {number} maxHp
- * @property {string} frequencyMagnitude
- * @property {FrequencyUnit} frequencyUnit
- * @property {number | null} deadline // In milliseconds; null if frequencyMagnitude is invalid.
+ * @property {boolean} periodic
+ * @property {string} periodNumber
+ * @property {FrequencyUnit} periodUnit
+ * @property {number | null} deadline // In milliseconds; null if periodNumber is invalid.
  */
 
 /**
@@ -148,7 +149,7 @@ export function isMonsterKind(monsterKind) {
  * @param {any} unit 
  * @returns {unit is FrequencyUnit}
  */
-export function isFrequencyUnit(unit) {
+export function isPeriodUnit(unit) {
   return frequencyUnits.includes(unit);
 }
 
@@ -166,8 +167,8 @@ export function isMonster(monster) {
     isLevel(monster?.level) &&
     typeof monster?.currentHp === "number" &&
     typeof monster?.maxHp === "number" &&
-    typeof monster?.frequencyMagnitude === "string" &&
-    isFrequencyUnit(monster?.frequencyUnit) &&
+    typeof monster?.periodNumber === "string" &&
+    isPeriodUnit(monster?.periodUnit) &&
     (typeof monster?.deadline === "number" || monster?.deadline === null)
   );
 }

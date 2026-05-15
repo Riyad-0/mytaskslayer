@@ -1,5 +1,5 @@
 import { useContext, useEffect, useReducer, useRef, useState } from "react";
-import { frequencyUnits, isFrequencyUnit, isMonster, isMonsterKind, isProfile, monsterKinds, monsterName, randomMonsterKind } from "./types";
+import { frequencyUnits, isPeriodUnit, isMonster, isMonsterKind, isProfile, monsterKinds, monsterName, randomMonsterKind } from "./types";
 import logo from "./assets/logo.png";
 import vampire from "./assets/vampire.webp";
 import MiniNav from "./MiniNav";
@@ -136,9 +136,9 @@ function Home() {
       let changed = false;
       const newMonsters = profile.monsters.map(monster => {
         if (!isMonster(monster)) return monster;
-        const frequencyMagnitude = parseFrequencyMagnitude(monster.frequencyMagnitude);
+        const frequencyMagnitude = parsePeriodNumber(monster.periodNumber);
         if (frequencyMagnitude === null || monster.deadline === null) return monster;
-        const period = getPeriod(frequencyMagnitude, monster.frequencyUnit);
+        const period = getPeriod(frequencyMagnitude, monster.periodUnit);
         const deadline = monster.deadline;
         const sinceDeadline = Date.now() - deadline;
         const laps = Math.floor(sinceDeadline / period);
@@ -147,7 +147,7 @@ function Home() {
         hpLost += laps;
         return {
           ...monster,
-          deadline: getDeadline(frequencyMagnitude, monster.frequencyUnit),
+          deadline: getDeadline(frequencyMagnitude, monster.periodUnit),
         };
       });
       const newHp = Math.max(profile.hp - hpLost, 0);
@@ -230,7 +230,7 @@ function Home() {
     const frequencyMagnitude = 5;
     const frequencyUnit = 'second';
     const deadline = getDeadline(frequencyMagnitude, frequencyUnit);
-    const hp = 2;
+    const hp = 1;
     setMonsters([
       ...monsters,
       {
@@ -241,8 +241,9 @@ function Home() {
         currentHp: hp,
         task,
         level,
-        frequencyMagnitude: frequencyMagnitude.toString(),
-        frequencyUnit,
+        periodic: false,
+        periodNumber: frequencyMagnitude.toString(),
+        periodUnit: frequencyUnit,
         deadline,
       }
     ]);
@@ -306,12 +307,19 @@ function Home() {
       const newGold = gold + 1;
       const maxHpMultiplier = getPlayerMaxHp(newXp) / getPlayerMaxHp(xp);
       const newHp = maxHpMultiplier * hp;
-      /** @type {Monster} */
-      const newMonster = {
-        ...monster,
-        currentHp: 0,
-      };
-      const newMonsters = _setMonster(newMonster);
+      let newMonsters;
+      if (monster.periodic) {
+        /** @type {Monster} */
+        const newMonster = {
+          ...monster,
+          currentHp: 0,
+        };
+        newMonsters = _setMonster(newMonster);
+      } else {
+        newMonsters = monsters.filter(found => found.id !== monster.id);
+        _setMonsters(newMonsters);
+      }
+
       _setHp(newHp);
       _setXp(newXp);
       _setGold(newGold);
@@ -555,15 +563,18 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, cen
     let changed = false;
     const newMonsters = monsters.list.map(found => {
       if (found.deadline === null) return found;
-      const frequencyMagnitude = parseFrequencyMagnitude(found.frequencyMagnitude);
+      const frequencyMagnitude = parsePeriodNumber(found.periodNumber);
       if (frequencyMagnitude === null) {
         return found;
       }
       const deadline = found.deadline;
       if (time < deadline) return found;
       changed = true;
-      const newDeadline = getDeadline(frequencyMagnitude, found.frequencyUnit);
+      const newDeadline = getDeadline(frequencyMagnitude, found.periodUnit);
       if (found.currentHp === 0) {
+        if (!found.periodic) {
+          return found;
+        }
         const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
         const level = randomLevel();
         console.log("revivve");
@@ -575,6 +586,9 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, cen
         };
       } else {
         monsters.attackPlayer(found);
+        if (!found.periodic) {
+          return found;
+        }
         return {
           ...found,
           deadline: newDeadline,
@@ -816,8 +830,8 @@ function AttackButtonOrStatus({ monster, attack }) {
  * }} props 
  */
 function MonsterFrequency({ monster }) {
-  const frequencyMagnitude = parseFrequencyMagnitude(monster.frequencyMagnitude);
-  const frequencyResult = formatFrequency(monster.frequencyMagnitude, monster.frequencyUnit);
+  const frequencyMagnitude = parsePeriodNumber(monster.periodNumber);
+  const frequencyResult = formatFrequency(monster.periodNumber, monster.periodUnit);
   return (
     (frequencyResult.invalidMagnitude || frequencyMagnitude === null || monster.deadline === null) ? 
       <div className="text-red-300">Invalid frequency</div> :
@@ -840,7 +854,7 @@ function MonsterFrequency({ monster }) {
  * }} props 
  */
 function ValidMonsterFrequency({ monster, frequencyMagnitude, frequencyString, deadline }) {
-  const period = getPeriod(frequencyMagnitude, monster.frequencyUnit);
+  const period = getPeriod(frequencyMagnitude, monster.periodUnit);
   const periodEnd = isTaskCompleted(monster) ? 
     (deadline - period) :
     deadline;
@@ -874,11 +888,11 @@ function isTaskCompleted(monster) {
   if (monster.deadline === null) {
     return false;
   }
-  const parsedMagnitude = parseFrequencyMagnitude(monster.frequencyMagnitude);
+  const parsedMagnitude = parsePeriodNumber(monster.periodNumber);
   if (parsedMagnitude === null) {
     return false;
   }
-  return monster.deadline - Date.now() > getPeriod(parsedMagnitude, monster.frequencyUnit);
+  return monster.deadline - Date.now() > getPeriod(parsedMagnitude, monster.periodUnit);
 }
 
 /**
@@ -912,7 +926,7 @@ function tryGetDeadline(frequencyMagnitude, frequencyUnit) {
  * @returns {dayjs.Dayjs | null}
  */
 function tryGetDeadlineObj(frequencyMagnitude, frequencyUnit) {
-  const parsedMagnitude = parseFrequencyMagnitude(frequencyMagnitude);
+  const parsedMagnitude = parsePeriodNumber(frequencyMagnitude);
   if (parsedMagnitude === null) {
     return null;
   }
@@ -928,11 +942,11 @@ function tryAdvanceDeadline(monster) {
   if (monster.deadline === null) {
     return null;
   }
-  const parsedMagnitude = parseFrequencyMagnitude(monster.frequencyMagnitude);
+  const parsedMagnitude = parsePeriodNumber(monster.periodNumber);
   if (parsedMagnitude === null) {
     return null;
   }
-  const newDeadline = dayjs(monster.deadline).add(parsedMagnitude, monster.frequencyUnit).valueOf();
+  const newDeadline = dayjs(monster.deadline).add(parsedMagnitude, monster.periodUnit).valueOf();
   return newDeadline
 }
 
@@ -963,7 +977,7 @@ function getDeadlineObj(frequencyMagnitude, frequencyUnit) {
  * @returns {{ invalidMagnitude: false, value: string } | { invalidMagnitude: true }} 
  */
 function formatFrequency(magnitude, unit) {
-  const parsedMagnitude = parseFrequencyMagnitude(magnitude);
+  const parsedMagnitude = parsePeriodNumber(magnitude);
   if (parsedMagnitude === null) {
     return { invalidMagnitude: true };
   }
@@ -997,7 +1011,7 @@ function formatFrequencyHelper(magnitude, unit) {
  * @returns {string}
  */
 function formatUnit(magnitude, unit) {
-  const parsedMagnitude = parseFrequencyMagnitude(magnitude);
+  const parsedMagnitude = parsePeriodNumber(magnitude);
   if (parsedMagnitude === null) {
     return formatUnitHelper(1, unit);
   }
@@ -1022,7 +1036,7 @@ function formatUnitHelper(magnitude, unit) {
  * @param {string} magnitude
  * @returns {number | null} 
  */
-function parseFrequencyMagnitude(magnitude) {
+function parsePeriodNumber(magnitude) {
   const trimmed = magnitude.trim();
   for (const c of trimmed) {
     if (Number.isNaN(Number.parseInt(c))) {
@@ -1120,27 +1134,43 @@ function MonsterEdit({ monster, monsters, switchToView }) {
     });
   }
   /** @type {React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>} */
-  function onChangeFrequencyMagnitude(e) {
+  function onChangePeriodNumber(e) {
     const frequencyMagnitude = e.target.value;
-    const deadline = tryGetDeadline(frequencyMagnitude, monster.frequencyUnit);
+    const deadline = tryGetDeadline(frequencyMagnitude, monster.periodUnit);
     monsters.setMonster({
       ...monster,
-      frequencyMagnitude,
+      periodNumber: frequencyMagnitude,
       deadline,
     });
   }
   /** @type {React.ChangeEventHandler<HTMLSelectElement, HTMLSelectElement>} */
-  function onChangeFrequencyUnit(e) {
+  function onChangePeriodUnit(e) {
     const frequencyUnit = e.target.value;
-    if (!isFrequencyUnit(frequencyUnit)) {
+    if (!isPeriodUnit(frequencyUnit)) {
       return;
     }
-    const deadline = tryGetDeadline(monster.frequencyMagnitude, frequencyUnit);
+    const deadline = tryGetDeadline(monster.periodNumber, frequencyUnit);
     monsters.setMonster({
       ...monster,
-      frequencyUnit,
+      periodUnit: frequencyUnit,
       deadline,
     });
+  }
+
+  function onClickPeriodic() {
+    if (monster.periodic) {
+      monsters.setMonster({
+        ...monster,
+        currentHp: Math.min(monster.currentHp, 1),
+        maxHp: 1,
+        periodic: false,
+      });
+    } else {
+      monsters.setMonster({
+        ...monster,
+        periodic: true,
+      });
+    }
   }
 
   function deleteMonster() {
@@ -1179,19 +1209,22 @@ function MonsterEdit({ monster, monsters, switchToView }) {
           <input className="bg-slate-600 rounded-sm px-2 py-0.5" name='task' value={monster.task} onChange={onChangeTask} />
           <label className="ml-2 text-slate-400 font-bold text-sm" htmlFor='task'>TASK</label>
         </div>
+        <div className="flex items-center gap-x-2">
+          <label htmlFor="periodic">Periodic</label>
+          <input name="periodic" type="checkbox" checked={monster.periodic} onChange={onClickPeriodic} />
+        </div>
+        {monster.periodic && <div className="flex gap-x-2">
+          <div>Every</div>
+          <input className="bg-slate-600 rounded-sm px-2 py-0.5 w-[8ch]" name='period number' value={monster.periodNumber} onChange={onChangePeriodNumber} />
+          <select className="bg-slate-600 rounded-sm px-1 py-0.5" name='period unit' value={monster.periodUnit} onChange={onChangePeriodUnit}>
+            {frequencyUnits.map(unit => {
+              return (<option key={unit} value={unit}>{formatUnit(monster.periodNumber, unit)}</option>);
+            })}
+          </select>
+        </div>}
       </div>
-      <div className="flex gap-x-2">
-        <div>Every</div>
-        <input className="bg-slate-600 rounded-sm px-2 py-0.5 w-[8ch]" name='frequency magnitude' value={monster.frequencyMagnitude} onChange={onChangeFrequencyMagnitude} />
-        <select className="bg-slate-600 rounded-sm px-1 py-0.5" name='frequency unit' value={monster.frequencyUnit} onChange={onChangeFrequencyUnit}>
-          {frequencyUnits.map(unit => {
-            return (<option key={unit} value={unit}>{formatUnit(monster.frequencyMagnitude, unit)}</option>);
-          })}
-        </select>
-      </div>
-      {/* <label className="ml-2 text-slate-400 font-bold text-sm">GOAL</label> */}
-      {parseFrequencyMagnitude(monster.frequencyMagnitude) === null ?
-        <div className="text-red-500">Invalid frequency</div> :
+      {parsePeriodNumber(monster.periodNumber) === null ?
+        <div className="text-red-500">Invalid period number</div> :
         <></>
       }
     </div>
@@ -1217,8 +1250,8 @@ const goalTypes = ["every", "times"];
 //           return (<option key={unit} value={unit}>{formatUnit(monster.frequencyMagnitude, unit)}</option>);
 //         })}
 //       </select>
-//       <input className="bg-slate-600 rounded-sm px-2 py-0.5 w-[8ch]" name='frequency magnitude' value={monster.frequencyMagnitude} onChange={onChangeFrequencyMagnitude} />
-//       <select className="bg-slate-600 rounded-sm px-1 py-0.5" name='frequency unit' value={monster.frequencyUnit} onChange={onChangeFrequencyUnit}>
+//       <input className="bg-slate-600 rounded-sm px-2 py-0.5 w-[8ch]" name='period number' value={monster.frequencyMagnitude} onChange={onChangeFrequencyMagnitude} />
+//       <select className="bg-slate-600 rounded-sm px-1 py-0.5" name='period unit' value={monster.frequencyUnit} onChange={onChangeFrequencyUnit}>
 //         {frequencyUnits.map(unit => {
 //           return (<option key={unit} value={unit}>{formatUnit(monster.frequencyMagnitude, unit)}</option>);
 //         })}
