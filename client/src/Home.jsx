@@ -551,9 +551,9 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, cen
   useEffect(() => {
     if (centralTransitionInProgress && taskInputRef.current !== null) {
       const rect = taskInputRef.current.getBoundingClientRect();
-      if (rect.bottom < 0) {
+      //8 if (rect.top < 0) {
         taskInputRef.current.scrollIntoView();
-      }
+      //}
       // console.log("scroll", rect.bottom);
       // taskInputRef.current.scrollIntoView();
     }
@@ -690,7 +690,7 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, cen
         <h2 className="home-monsters-heading mt-6">What monsters will we slay today?</h2>
         <form onSubmit={onSubmitTask}>
           <input
-            className="home-monsters-input"
+            className="home-monsters-input scroll-mt-48"
             onChange={onChangeTask}
             value={task}
             placeholder="try: do the laundry"
