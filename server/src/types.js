@@ -41,10 +41,16 @@
  * @property {Level} level
  * @property {number} currentHp
  * @property {number} maxHp
- * @property {string} frequencyMagnitude
- * @property {FrequencyUnit} frequencyUnit
- * @property {number | null} deadline // In milliseconds; null if frequencyMagnitude is invalid.
+ * @property {Schedule} schedule
+ * @property {string} periodNumber
+ * @property {FrequencyUnit} periodUnit
+ * @property {number | null} deadline // In milliseconds; null if periodNumber is invalid.
  */
+
+/**
+ * @typedef {{ periodic: true } | { periodic: false, missedDeadline: boolean }} Schedule
+ */
+
 
 /**
  * @typedef {frequencyUnits[number]} FrequencyUnit
@@ -144,8 +150,30 @@ export function isMonster(monster) {
     isLevel(monster?.level) &&
     typeof monster?.currentHp === "number" &&
     typeof monster?.maxHp === "number" &&
-    typeof monster?.frequencyMagnitude === "string" &&
-    isFrequencyUnit(monster?.frequencyUnit) &&
+    isSchedule(monster.schedule) &&
+    typeof monster?.periodNumber === "string" &&
+    isPeriodUnit(monster?.periodUnit) &&
     (typeof monster?.deadline === "number" || monster?.deadline === null)
   );
+}
+
+/**
+ * 
+ * @param {any} schedule 
+ * @returns {schedule is Schedule}
+ */
+export function isSchedule(schedule) {
+  return (
+    schedule?.periodic === false ||
+    (schedule?.periodic === true && typeof schedule?.missedDeadline === "boolean")
+  );
+}
+
+/**
+ * 
+ * @param {any} unit 
+ * @returns {unit is FrequencyUnit}
+ */
+export function isPeriodUnit(unit) {
+  return frequencyUnits.includes(unit);
 }

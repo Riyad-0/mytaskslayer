@@ -21,10 +21,14 @@
  * @property {Level} level
  * @property {number} currentHp
  * @property {number} maxHp
- * @property {boolean} periodic
+ * @property {Schedule} schedule
  * @property {string} periodNumber
  * @property {FrequencyUnit} periodUnit
  * @property {number | null} deadline // In milliseconds; null if periodNumber is invalid.
+ */
+
+/**
+ * @typedef {{ periodic: true } | { periodic: false, missedDeadline: boolean }} Schedule
  */
 
 /**
@@ -167,9 +171,22 @@ export function isMonster(monster) {
     isLevel(monster?.level) &&
     typeof monster?.currentHp === "number" &&
     typeof monster?.maxHp === "number" &&
+    isSchedule(monster.schedule) &&
     typeof monster?.periodNumber === "string" &&
     isPeriodUnit(monster?.periodUnit) &&
     (typeof monster?.deadline === "number" || monster?.deadline === null)
+  );
+}
+
+/**
+ * 
+ * @param {any} schedule 
+ * @returns {schedule is Schedule}
+ */
+export function isSchedule(schedule) {
+  return (
+    schedule?.periodic === false ||
+    (schedule?.periodic === true && typeof schedule?.missedDeadline === "boolean")
   );
 }
 

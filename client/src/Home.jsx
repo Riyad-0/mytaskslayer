@@ -8,6 +8,9 @@ import dayjs from "dayjs";
 import { buildStyles, CircularProgressbar } from "react-circular-progressbar";
 import { GuestIdContext } from "./GuestIdContext";
 import { get, post } from "./requests";
+import { FaHeart } from "react-icons/fa";
+import { GiAbstract039, GiAbstract069, GiAbstract091, GiTwoCoins } from "react-icons/gi";
+import { TbCoin, TbCoinFilled } from "react-icons/tb";
 /** @import { FrequencyUnit, Level, Monster } from "./types" */
 
 
@@ -111,6 +114,44 @@ const reviveCost = 1;
 // if Periodic
 
 function Home() {
+  const [coords, setCoords] = useState(/** @type {[number, number] | null} */ (null));
+  const [coordList, setCoordList] = useState(/** @type {[number, number][]} **/ ([]));
+  const [time, setTime] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(Date.now());
+    }, 1000/60);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+  useEffect(() => {
+    if (coords !== null) {
+      setCoordList([...coordList, coords]);
+      console.log(coords);
+    }
+  }, [time]);
+  /** @type {React.MouseEventHandler<HTMLDivElement>} */
+  function onMove(e) {
+    /** @type {[number, number]} */
+    const coords = [e.clientX, e.clientY];
+    setCoords(coords);
+  }
+  return (
+    <>
+      {coords && (
+          <div
+            className="absolute -z-10 bg-blue-400 w-16 h-16 -translate-1/2 rounded-full bg-radial from-sky-300 to-sky-100"
+            style={{ left: coords[0], top: coords[1] }}
+          ></div>
+        )}
+      <HomeInner />
+      <div className="absolute top-0 left-0 w-full h-full" onMouseMove={onMove}></div>
+    </>
+  );
+}
+
+function HomeInner() {
   const [task, setTask] = useState("");
   const [hp, _setHp] = useState(/** @type {number | null} */ (null));
   const [xp, _setXp] = useState(/** @type {number | null} */ (null));
@@ -136,18 +177,28 @@ function Home() {
       let changed = false;
       const newMonsters = profile.monsters.map(monster => {
         if (!isMonster(monster)) return monster;
-        const frequencyMagnitude = parsePeriodNumber(monster.periodNumber);
-        if (frequencyMagnitude === null || monster.deadline === null) return monster;
-        const period = getPeriod(frequencyMagnitude, monster.periodUnit);
-        const deadline = monster.deadline;
-        const sinceDeadline = Date.now() - deadline;
+        if (!monster.schedule.periodic) {
+          if (monster.deadline === null) return monster;
+          if (monster.schedule.missedDeadline) return monster;
+          if (Date.now() - monster.deadline > 0) return monster;
+          changed = true;
+          hpLost++;
+          return {
+            ...monster,
+            schedule: { periodic: false, missedDeadline: true },
+          };
+        }
+        const periodNumber = parsePeriodNumber(monster.periodNumber);
+        if (periodNumber === null || monster.deadline === null) return monster;
+        const period = getPeriod(periodNumber, monster.periodUnit);
+        const sinceDeadline = Date.now() - monster.deadline;
         const laps = Math.floor(sinceDeadline / period);
         if (laps <= 0) return monster;
         changed = true;
         hpLost += laps;
         return {
           ...monster,
-          deadline: getDeadline(frequencyMagnitude, monster.periodUnit),
+          deadline: getDeadline(periodNumber, monster.periodUnit),
         };
       });
       const newHp = Math.max(profile.hp - hpLost, 0);
@@ -201,6 +252,7 @@ function Home() {
   }
 
   function submitTask() {
+    if (xp === null) return;
     const words = task.trim().split(" ");
     if (words.length === 0) {
       return;
@@ -226,7 +278,8 @@ function Home() {
         break;
       }
     }
-    const level = randomLevel();
+    const playerLevel = levelFromXp(xp);
+    const level = generateMonsterLevel(playerLevel);
     const frequencyMagnitude = 5;
     const frequencyUnit = 'second';
     const deadline = getDeadline(frequencyMagnitude, frequencyUnit);
@@ -241,7 +294,7 @@ function Home() {
         currentHp: hp,
         task,
         level,
-        periodic: false,
+        schedule: { periodic: false, missedDeadline: false },
         periodNumber: frequencyMagnitude.toString(),
         periodUnit: frequencyUnit,
         deadline,
@@ -308,7 +361,7 @@ function Home() {
       const maxHpMultiplier = getPlayerMaxHp(newXp) / getPlayerMaxHp(xp);
       const newHp = maxHpMultiplier * hp;
       let newMonsters;
-      if (monster.periodic) {
+      if (monster.schedule.periodic) {
         /** @type {Monster} */
         const newMonster = {
           ...monster,
@@ -344,6 +397,7 @@ function Home() {
     <>
       <title>Task Slayer</title>
       <Header />
+      <Central mode={mode} didSubmitTask={didSubmitTask} hp={hp} xp={xp} gold={gold} revive={monsterProps.revivePlayer} setCentralTransitionInProgress={setCentralTransitionInProgress} />
       {mode === "loading" ?
         <></> :
         <>
@@ -354,7 +408,6 @@ function Home() {
             <></> :
             <Hero didSubmitTask={didSubmitTask} />
           } */}
-          {hp !== null && xp !== null && gold !== null && (<Central mode={mode} didSubmitTask={didSubmitTask} hp={hp} xp={xp} gold={gold} revive={monsterProps.revivePlayer} setCentralTransitionInProgress={setCentralTransitionInProgress} />)}
           {
             (hp === null || xp === null || gold === null) ?
               <></> :
@@ -375,9 +428,9 @@ function Home() {
  * @param {{
  *   mode: HomeMode
  *   didSubmitTask: boolean
- *   hp: number
- *   xp: number
- *   gold: number
+ *   hp: number | null
+ *   xp: number | null
+ *   gold: number | null
  *   revive: () => void
  *   setCentralTransitionInProgress: (inProgress: boolean) => void
  * }} props 
@@ -399,7 +452,9 @@ function Central({ mode, didSubmitTask, hp, xp, gold, revive, setCentralTransiti
         </div>
       )}
       <div className={(mode === "hero" && !heroTransitionEnded ) ? "invisible" : ""} style={{ gridArea: "1 / 1"}}>
-        <Hud mode={mode} heroTransitionEnded={heroTransitionEnded} hp={hp} xp={xp} gold={gold} revive={revive} />
+        {hp !== null && xp !== null && gold !== null && (
+          <Stats mode={mode} heroTransitionEnded={heroTransitionEnded} hp={hp} xp={xp} gold={gold} revive={revive} />
+        )}
       </div>
     </div>
   );
@@ -466,7 +521,7 @@ function Hero({
  *   revive: () => void
  * }} props 
  */
-function Hud({ mode, heroTransitionEnded, hp, xp, gold, revive }) {
+function Stats({ mode, heroTransitionEnded, hp, xp, gold, revive }) {
   const maxHp = getPlayerMaxHp(xp);
   const pHp = (hp / maxHp) * 100;
   const pXp = getPXp(xp) * 100;
@@ -474,28 +529,67 @@ function Hud({ mode, heroTransitionEnded, hp, xp, gold, revive }) {
   const xpInBar = xp - xpFromLevel(level);
   const xpBarSize = xpFromLevel(level + 1) - xpFromLevel(level);
   return (
-    <div className={mode === "task" ? "" : (heroTransitionEnded ? "prepare-appear appear" : "prepare-appear")}>
-      <div className="h-2 mx-12 bg-gray-500 rounded-[3px]">
-        <div
-          className="h-full bg-red-500 rounded-[3px]"
-          style={{ width: `${pHp}%` }}
-        ></div>
+    <div className={
+      "flex justify-center " +
+      (mode === "task" ? "" : (heroTransitionEnded ? "prepare-appear appear" : "prepare-appear"))
+    }>
+      <div className="w-full flex flex-col items-center mx-12 max-w-90">
+        <div className="w-full grid gap-x-2 items-center" style={{ gridTemplateColumns: "max-content auto", gridTemplateRows: "auto min-content" }}>
+          <FaHeart className="text-red-500 col-1 row-1 w-8 h-8" />
+          <div className="grow h-2 bg-gray-500 rounded-full">
+            <div
+              className="h-full bg-red-500 rounded-full col-2 row-1"
+              style={{ width: `${pHp}%` }}
+            ></div>
+          </div>
+          <div className=" text-red-500 col-2 row-2 -mt-2">{Math.round(hp)}/{maxHp}</div>
+        </div>
+        <div className="w-full grid gap-x-2 items-center mt-2" style={{ gridTemplateColumns: "max-content auto", gridTemplateRows: "auto min-content" }}>
+          <div className="text-green-400 flex text-xl col-1 row-1 pb-0.5 w-8 h-8 items-center justify-center border-2 border-green-400 rounded-full font-bold">{level}</div>
+          <div className="grow h-2 bg-gray-500 rounded-full">
+            <div
+              className="h-full bg-green-400 rounded-full col-2 row-1"
+              style={{ width: `${pXp}%` }}
+            ></div>
+          </div>
+          <div className=" text-green-400 col-2 row-2 -mt-2">{xpInBar}/{xpBarSize}</div>
+        </div>
+        <div className="w-full grid gap-x-2 items-center mt-2" style={{ gridTemplateColumns: "min-content min-content auto" }}>
+          <GiAbstract039 className="text-amber-300 w-8 h-8" />
+          {/* <GiAbstract069 className="text-amber-300 w-8 h-8" /> */}
+          <div className="text-amber-300">{gold}</div>
+          {hp < 0 && (
+            <div className="justify-self-end">
+              <button onClick={revive} className="cursor-pointer bg-red-500 rounded text-gray-300 font-bold p-1.5">Revive? ({reviveCost})</button>
+            </div>
+          )}
+        </div>
+
       </div>
-      <div className="mx-12 text-red-500">Health: {Math.round(hp)}/{maxHp}</div>
-      <div className="h-2 mx-12 mt-4 bg-gray-500 rounded-[3px]">
+      {/* <div className="flex justify-center gap-x-2 items-center">
+        <FaHeart className="text-red-500 text-2xl" />
+        <div className="grow h-2 bg-gray-500 rounded-full">
+          <div
+            className="h-full bg-red-500 rounded-full"
+            style={{ width: `${pHp}%` }}
+          ></div>
+        </div>
+      </div> */}
+      {/* <div className="text-red-500">{Math.round(hp)}/{maxHp}</div>
+      <div className="h-2 mt-4 bg-gray-500 rounded-full">
         <div
-          className="h-full bg-green-400 rounded-[3px]"
+          className="h-full bg-green-400 rounded-full"
           style={{ width: `${pXp}%` }}
         ></div>
       </div>
-      <div className="mx-12 text-green-400">Level {level} -  {xpInBar}/{xpBarSize}</div>
-      {hp > 0 ?
-        <div className="mx-12 text-amber-300 text-end">Gold: {gold}</div> :
-        <div className="mx-12 flex items-center justify-between">
+      <div className="text-green-400">Level {level} -  {xpInBar}/{xpBarSize}</div> */}
+      {/* {hp > 0 ?
+        <div className="text-amber-300 text-end">Gold: {gold}</div> :
+        <div className="flex items-center justify-between">
           <button onClick={revive} className="cursor-pointer bg-red-500 rounded text-gray-300 font-bold p-1.5">Revive? ({reviveCost})</button>
           <div className="text-amber-300 text-end">Gold: {gold}</div>
         </div>
-      }
+      } */}
     </div>
   );
 }
@@ -551,49 +645,111 @@ function MonsterSection({ mode, didSubmitTask, monsters, task, hp, xp, gold, cen
   useEffect(() => {
     if (centralTransitionInProgress && taskInputRef.current !== null) {
       const rect = taskInputRef.current.getBoundingClientRect();
-      //8 if (rect.top < 0) {
+      if (rect.top < 0) {
+      
         taskInputRef.current.scrollIntoView();
-      //}
+      }
       // console.log("scroll", rect.bottom);
       // taskInputRef.current.scrollIntoView();
     }
   }, [time]);
+
+  /**
+   * 
+   * @param {Monster} monster
+   * @param {number} time 
+   * @returns {Monster}
+   */
+  function updateMonster(monster, time) {
+    if (monster.deadline === null) return monster;
+    const frequencyMagnitude = parsePeriodNumber(monster.periodNumber);
+    if (frequencyMagnitude === null) {
+      return monster;
+    }
+    const deadline = monster.deadline;
+    if (time < deadline) return monster;
+    const newDeadline = getDeadline(frequencyMagnitude, monster.periodUnit);
+    if (monster.currentHp === 0) {
+      if (!monster.schedule.periodic) {
+        return monster;
+      }
+      const hp = monster.currentHp === 0 ? monster.maxHp : monster.currentHp;
+      const level = randomLevel();
+      console.log("revivve");
+      return {
+        ...monster,
+        currentHp: hp,
+        level,
+        deadline: newDeadline,
+      };
+    } else {
+      if (!monster.schedule.periodic) {
+        if (monster.schedule.missedDeadline) {
+          return monster;
+        } else {
+          monsters.attackPlayer(monster);
+          return {
+            ...monster,
+            schedule: { periodic: false, missedDeadline: true },
+          };
+        }
+      }
+      monsters.attackPlayer(monster);
+      return {
+        ...monster,
+        deadline: newDeadline,
+      };
+    }
+  }
   useEffect(() => {
     if (time === initialTime) return;
     let changed = false;
     const newMonsters = monsters.list.map(found => {
-      if (found.deadline === null) return found;
-      const frequencyMagnitude = parsePeriodNumber(found.periodNumber);
-      if (frequencyMagnitude === null) {
-        return found;
+      const newMonster = updateMonster(found, time);
+      if (newMonster !== found) {
+        changed = true;
       }
-      const deadline = found.deadline;
-      if (time < deadline) return found;
-      changed = true;
-      const newDeadline = getDeadline(frequencyMagnitude, found.periodUnit);
-      if (found.currentHp === 0) {
-        if (!found.periodic) {
-          return found;
-        }
-        const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
-        const level = randomLevel();
-        console.log("revivve");
-        return {
-          ...found,
-          currentHp: hp,
-          level,
-          deadline: newDeadline,
-        };
-      } else {
-        monsters.attackPlayer(found);
-        if (!found.periodic) {
-          return found;
-        }
-        return {
-          ...found,
-          deadline: newDeadline,
-        };
-      }
+      return newMonster;
+      // if (found.deadline === null) return found;
+      // const frequencyMagnitude = parsePeriodNumber(found.periodNumber);
+      // if (frequencyMagnitude === null) {
+      //   return found;
+      // }
+      // const deadline = found.deadline;
+      // if (time < deadline) return found;
+      // changed = true;
+      // const newDeadline = getDeadline(frequencyMagnitude, found.periodUnit);
+      // if (found.currentHp === 0) {
+      //   if (!found.schedule.periodic) {
+      //     return found;
+      //   }
+      //   const hp = found.currentHp === 0 ? found.maxHp : found.currentHp;
+      //   const level = randomLevel();
+      //   console.log("revivve");
+      //   return {
+      //     ...found,
+      //     currentHp: hp,
+      //     level,
+      //     deadline: newDeadline,
+      //   };
+      // } else {
+      //   if (!found.schedule.periodic) {
+      //     if (found.schedule.missedDeadline) {
+      //       return found;
+      //     } else {
+      //       monsters.attackPlayer(found);
+      //       return {
+      //         ...found,
+      //         schedule: { periodic: false, missedDeadline: true },
+      //       };
+      //     }
+      //   }
+      //   monsters.attackPlayer(found);
+      //   return {
+      //     ...found,
+      //     deadline: newDeadline,
+      //   };
+      // }
     });
     if (changed) {
       monsters.set(newMonsters);
@@ -865,7 +1021,6 @@ function ValidMonsterFrequency({ monster, frequencyMagnitude, frequencyString, d
       <div>{frequencyString}</div>
       <div className="w-5 h-5 mt-0.5">
         <CircularProgressbar
-          className="text-red-500"
           value={p}
           maxValue={1}
           strokeWidth={50}
@@ -1064,6 +1219,21 @@ function toTitleCase(s) {
 
 /**
  * 
+ * @param {number} playerLevel 
+ * @returns {Level}
+ */
+function generateMonsterLevel(playerLevel) {
+  if (Math.random() < 0.1) {
+    return "boss";
+  } else {
+    const range = 5;
+    const d = Math.floor(Math.random() * (range * 2 + 1)) - range;
+    return Math.max(Math.min(playerLevel + d, 99), 1);
+  }
+}
+
+/**
+ * 
  * @returns {Level}
  */
 function randomLevel() {
@@ -1158,17 +1328,17 @@ function MonsterEdit({ monster, monsters, switchToView }) {
   }
 
   function onClickPeriodic() {
-    if (monster.periodic) {
+    if (monster.schedule.periodic) {
       monsters.setMonster({
         ...monster,
         currentHp: Math.min(monster.currentHp, 1),
         maxHp: 1,
-        periodic: false,
+        schedule: { periodic: false, missedDeadline: false },
       });
     } else {
       monsters.setMonster({
         ...monster,
-        periodic: true,
+        schedule: { periodic: true },
       });
     }
   }
@@ -1211,9 +1381,9 @@ function MonsterEdit({ monster, monsters, switchToView }) {
         </div>
         <div className="flex items-center gap-x-2">
           <label htmlFor="periodic">Periodic</label>
-          <input name="periodic" type="checkbox" checked={monster.periodic} onChange={onClickPeriodic} />
+          <input name="periodic" type="checkbox" checked={monster.schedule.periodic} onChange={onClickPeriodic} />
         </div>
-        {monster.periodic && <div className="flex gap-x-2">
+        {monster.schedule.periodic && <div className="flex gap-x-2">
           <div>Every</div>
           <input className="bg-slate-600 rounded-sm px-2 py-0.5 w-[8ch]" name='period number' value={monster.periodNumber} onChange={onChangePeriodNumber} />
           <select className="bg-slate-600 rounded-sm px-1 py-0.5" name='period unit' value={monster.periodUnit} onChange={onChangePeriodUnit}>
